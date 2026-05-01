@@ -4,9 +4,9 @@ City-aware policy simulation platform for hackathons and rapid prototyping.
 
 Tagline: `See the impact before the decision.`
 
-## What This Project Is
+## Overview
 
-CivitasX simulates how a city reacts to government or public-policy decisions such as:
+CivitasX simulates how a city reacts to public-policy decisions such as:
 
 - road closures
 - bus route shutdowns
@@ -15,7 +15,7 @@ CivitasX simulates how a city reacts to government or public-policy decisions su
 - internet restrictions
 - public event controls
 
-The goal is to show ripple effects across:
+The simulation is designed to show ripple effects across:
 
 - transport
 - economy
@@ -34,10 +34,10 @@ Implemented:
 - city-aware simulation for `Islamabad`, `Lahore`, and `Karachi`
 - interconnected agent logic
 - conflict detection
-- recommended alternative policy generation
-- compare mode support
-- optional Groq-based executive summary
-- tests for the main simulation flow
+- safer alternative policy generation
+- comparison mode support
+- optional Groq SDK integration for executive summaries
+- tests for core simulation flows
 
 Not implemented yet:
 
@@ -51,18 +51,18 @@ Not implemented yet:
 
 ```text
 CivitasX/
-├── app/
-│   ├── api.py               # API routes
-│   ├── city_profiles.py     # City definitions and zone templates
-│   ├── llm.py               # Optional Groq integration
-│   ├── main.py              # FastAPI app entrypoint
-│   ├── models.py            # Request/response schemas
-│   └── simulation.py        # Core multi-agent simulation engine
-├── tests/
-│   └── test_simulation.py   # Backend tests
-├── policypulse_ai_project_brief.md
-├── requirements.txt
-└── README.md
+|-- app/
+|   |-- api.py               # API routes
+|   |-- city_profiles.py     # City definitions and zone templates
+|   |-- llm.py               # Optional Groq SDK integration
+|   |-- main.py              # FastAPI app entrypoint
+|   |-- models.py            # Request/response schemas
+|   `-- simulation.py        # Core multi-agent simulation engine
+|-- tests/
+|   `-- test_simulation.py   # Backend tests
+|-- policypulse_ai_project_brief.md
+|-- requirements.txt
+`-- README.md
 ```
 
 ## Backend vs Frontend
@@ -76,7 +76,7 @@ The backend already handles:
 - agent-by-agent impact simulation
 - score calculation
 - conflict detection
-- recommended safer alternative generation
+- safer alternative generation
 - compare-mode response generation
 
 ### Frontend Responsibility
@@ -93,19 +93,28 @@ The future frontend should handle:
 
 ## Backend Quick Start
 
-### 1. Install dependencies
+### 1. Create and activate a virtual environment
 
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```powershell
 python -m pip install -r requirements.txt
 ```
 
-### 2. Run the API
+This now installs the Groq Python SDK as part of the normal backend setup.
 
-```bash
+### 3. Run the API
+
+```powershell
 python -m uvicorn app.main:app --reload
 ```
 
-API base URL:
+Base URL:
 
 ```text
 http://127.0.0.1:8000
@@ -117,9 +126,9 @@ Interactive docs:
 http://127.0.0.1:8000/docs
 ```
 
-### 3. Run checks
+### 4. Run checks
 
-```bash
+```powershell
 python -m compileall app tests
 python -m pytest
 ```
@@ -148,7 +157,7 @@ Returns the supported cities with summaries and highlights.
 
 Frontend use:
 
-- fill city selector
+- fill the city selector
 - show city intro cards
 
 ### `GET /metadata`
@@ -432,7 +441,7 @@ Use:
 Render:
 
 - a conflict list
-- a short “why this is risky” section
+- a short "why this is risky" section
 
 This should be visually separate from generic agent text because judges will look for cross-agent reasoning.
 
@@ -477,8 +486,8 @@ Recommended simple UI flow:
    - network graph
    - conflict list
    - executive summary
-6. If `alternative_policy` exists, show “Recommended Safer Policy”
-7. If user clicks compare, show `comparison`
+6. If `alternative_policy` exists, show "Recommended Safer Policy"
+7. If the user clicks compare, show `comparison`
 
 ## Recommended Frontend Stack
 
@@ -494,16 +503,16 @@ Suggested frontend folder when it is created:
 
 ```text
 frontend/
-├── components/
-├── lib/
-├── pages/ or app/
-├── styles/
-└── types/
+|-- components/
+|-- lib/
+|-- pages/ or app/
+|-- styles/
+`-- types/
 ```
 
 ## Suggested Frontend Types
 
-The friend building the frontend should mirror backend response models in TypeScript.
+The frontend should mirror backend response models in TypeScript.
 
 Suggested first types to create:
 
@@ -522,10 +531,15 @@ Create a local `.env` using `.env.example` and add:
 ```env
 GROQ_API_KEY=your_key_here
 GROQ_MODEL=llama-3.1-8b-instant
-GROQ_BASE_URL=https://api.groq.com/openai/v1/chat/completions
+GROQ_BASE_URL=https://api.groq.com
 ```
 
-If no Groq key is present, the backend still works. Only the executive summary stays deterministic.
+Notes:
+
+- `GROQ_API_KEY` is optional
+- if no Groq key is present, the backend still works
+- only the executive summary falls back to deterministic text
+- the current integration uses the official `groq` Python SDK
 
 ## Important Notes For Frontend Development
 
@@ -553,4 +567,5 @@ For the frontend developer, the best order is:
 - API routes: [app/api.py](C:/Users/Lenovo/Desktop/CivitasX/app/api.py)
 - Schemas: [app/models.py](C:/Users/Lenovo/Desktop/CivitasX/app/models.py)
 - Simulation engine: [app/simulation.py](C:/Users/Lenovo/Desktop/CivitasX/app/simulation.py)
+- Groq client wrapper: [app/llm.py](C:/Users/Lenovo/Desktop/CivitasX/app/llm.py)
 - Tests: [tests/test_simulation.py](C:/Users/Lenovo/Desktop/CivitasX/tests/test_simulation.py)
