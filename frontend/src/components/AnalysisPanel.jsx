@@ -54,7 +54,7 @@ function ComparisonPill({ label, value, invert = false }) {
   );
 }
 
-export default function AnalysisPanel({ simulation }) {
+export default function AnalysisPanel({ simulation, actionPlan }) {
   if (!simulation) {
     return (
       <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
@@ -113,6 +113,19 @@ export default function AnalysisPanel({ simulation }) {
             ))}
           </ul>
         </Section>
+
+        {actionPlan?.length ? (
+          <Section title="Implementation Strategy" subtitle="A lightweight rollout plan for a real operations room.">
+            <div className="space-y-3">
+              {actionPlan.map((step) => (
+                <div key={step.label} className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                  <p className="text-[0.65rem] uppercase tracking-[0.22em] text-cyan-300/70">{step.label}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">{step.detail}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        ) : null}
 
         <Section title="Agent Readouts" subtitle="These cards come directly from the backend agent outputs.">
           <div className="grid gap-3">

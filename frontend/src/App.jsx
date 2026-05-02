@@ -3,12 +3,20 @@ import AlertSystem from './components/AlertSystem';
 import AgentFlowPanel from './components/AgentFlowPanel';
 import AnalysisPanel from './components/AnalysisPanel';
 import City3D from './components/City3D';
+import ConflictBanner from './components/ConflictBanner';
 import ControlPanel from './components/ControlPanel';
+import GovernancePanel from './components/GovernancePanel';
+import PersonaPanel from './components/PersonaPanel';
 import ZonePopup from './components/ZonePopup';
 import { loadBootstrap, simulateScenario } from './lib/api';
 import {
+  buildActionPlan,
   buildAlertItems,
   buildConsequenceFeed,
+  buildGovernanceFrame,
+  buildPersonaImpacts,
+  buildPlaybackStages,
+  buildProblemFrame,
   buildVisualMetrics,
   buildZoneStates,
   DEMO_SCENARIO,
@@ -93,6 +101,30 @@ function Header({ metrics, simulation }) {
   );
 }
 
+function ProblemFrame({ items }) {
+  if (!items?.length) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 px-5 py-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+      <div className="mb-4">
+        <p className="text-[0.7rem] uppercase tracking-[0.32em] text-cyan-300/70">Why This Matters</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-white">One policy choice can break multiple city systems at once</h2>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-2xl border border-white/8 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{item.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [metadata, setMetadata] = useState(null);
   const [cities, setCities] = useState([]);
@@ -106,6 +138,9 @@ export default function App() {
   const [consequences, setConsequences] = useState([
     'The simulator is ready. Apply a decision to start the live city response.',
   ]);
+  const [playbackStages, setPlaybackStages] = useState([]);
+  const [activePlaybackIndex, setActivePlaybackIndex] = useState(0);
+  const [playbackRunning, setPlaybackRunning] = useState(false);
   const alertTimers = useRef(new Map());
 
   useEffect(() => {
@@ -114,6 +149,24 @@ export default function App() {
       alertTimers.current.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!playbackRunning || playbackStages.length <= 1) {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(() => {
+      setActivePlaybackIndex((current) => {
+        if (current >= playbackStages.length - 1) {
+          return 0;
+        }
+
+        return current + 1;
+      });
+    }, 2200);
+
+    return () => window.clearInterval(timerId);
+  }, [playbackRunning, playbackStages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,8 +240,12 @@ export default function App() {
 
     try {
       const result = await simulateScenario(nextControls, { useLLM: true });
+      const nextZoneStates = buildZoneStates(result);
       setSimulation(result);
       setConsequences(buildConsequenceFeed(result));
+      setPlaybackStages(buildPlaybackStages(result, nextZoneStates));
+      setActivePlaybackIndex(0);
+      setPlaybackRunning(true);
       setLastResponseAt(Date.now());
       setRequestState('ready');
       if (!isBootstrap) {
@@ -228,7 +285,13 @@ export default function App() {
 
   const visualMetrics = buildVisualMetrics(simulation);
   const zoneStates = buildZoneStates(simulation);
+  const personas = buildPersonaImpacts(simulation, zoneStates);
+  const actionPlan = buildActionPlan(simulation);
+  const governanceFrame = buildGovernanceFrame(simulation);
+  const problemFrame = buildProblemFrame(simulation);
   const selectedZone = zoneStates.find((zone) => zone.id === activeZone) || null;
+  const activePlaybackStage = playbackStages[activePlaybackIndex] || null;
+  const pulseZoneIds = activePlaybackStage?.zoneIds || [];
   const selectedCity = useMemo(
     () => cities.find((entry) => entry.name === controls.city),
     [cities, controls.city],
@@ -259,6 +322,8 @@ export default function App() {
       <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1850px] flex-col gap-4">
         <Header metrics={visualMetrics} simulation={simulation} />
 
+        <ProblemFrame items={problemFrame} />
+
         <section className="rounded-[28px] border border-white/10 bg-slate-950/70 px-5 py-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -286,6 +351,10 @@ export default function App() {
           </div>
         </section>
 
+        {simulation ? (
+          <ConflictBanner conflicts={simulation.conflicts} recommendation={simulation.agents?.advisor?.recommendation} />
+        ) : null}
+
         <main className="grid flex-1 gap-4 xl:grid-cols-[330px_minmax(0,1fr)_390px]">
           <div className="space-y-4 xl:max-h-[calc(100vh-160px)] xl:overflow-y-auto xl:pr-1">
             <ControlPanel
@@ -307,6 +376,8 @@ export default function App() {
                 zoneStates={zoneStates}
                 metrics={visualMetrics}
                 activeZoneId={activeZone}
+                pulseZoneIds={pulseZoneIds}
+                playbackStage={activePlaybackStage}
                 onSelectZone={(zone) => setActiveZone(zone.id)}
                 showOverlay={showCityOverlay}
                 onCloseOverlay={() => setShowCityOverlay(false)}
@@ -323,11 +394,22 @@ export default function App() {
               <ZonePopup zone={selectedZone} onClose={() => setActiveZone(null)} />
             </div>
 
-            <AgentFlowPanel network={simulation?.agent_network} headline={simulation?.comparison?.headline} />
+            <AgentFlowPanel
+              network={simulation?.agent_network}
+              headline={simulation?.comparison?.headline}
+              playbackStages={playbackStages}
+              activeStageIndex={activePlaybackIndex}
+              playbackRunning={playbackRunning}
+              onTogglePlayback={() => setPlaybackRunning((current) => !current)}
+              onRestartPlayback={(index = 0) => {
+                setActivePlaybackIndex(index);
+                setPlaybackRunning(true);
+              }}
+            />
           </div>
 
           <div className="space-y-4 xl:max-h-[calc(100vh-160px)] xl:overflow-y-auto xl:pr-1">
-            <AnalysisPanel simulation={simulation} />
+            <AnalysisPanel simulation={simulation} actionPlan={actionPlan} />
 
             <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
               <div className="mb-4">
@@ -342,6 +424,9 @@ export default function App() {
                 ))}
               </div>
             </section>
+
+            <PersonaPanel personas={personas} />
+            <GovernancePanel frame={governanceFrame} />
           </div>
         </main>
       </div>
