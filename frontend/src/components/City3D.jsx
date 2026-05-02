@@ -126,6 +126,31 @@ function MarkerCluster({ zone, type, count, color, offsetY }) {
   );
 }
 
+function PulseHalo({ size, color, active }) {
+  const meshRef = useRef();
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current || !active) {
+      return;
+    }
+
+    const pulse = 0.18 + Math.sin(clock.elapsedTime * 3.2) * 0.08;
+    meshRef.current.material.opacity = pulse;
+    meshRef.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 2.6) * 0.03);
+  });
+
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <mesh ref={meshRef} position={[0, 0.24, 0]} rotation-x={-Math.PI / 2}>
+      <ringGeometry args={[Math.max(size[0], size[1]) * 0.48, Math.max(size[0], size[1]) * 0.58, 48]} />
+      <meshBasicMaterial color={color} transparent opacity={0.22} side={2} />
+    </mesh>
+  );
+}
+
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
   canvas.width = 768;
@@ -256,9 +281,9 @@ function StreetLight({ position, color }) {
   );
 }
 
-function ZoneBlock({ zone, isHovered, isSelected, onSelect, onHover }) {
+function ZoneBlock({ zone, isHovered, isSelected, isPlaybackActive, onSelect, onHover }) {
   const tone = riskTone(zone.riskBand);
-  const elevated = isHovered || isSelected;
+  const elevated = isHovered || isSelected || isPlaybackActive;
   const glowOpacity = elevated ? 0.35 : 0.2;
 
   return (
@@ -301,6 +326,8 @@ function ZoneBlock({ zone, isHovered, isSelected, onSelect, onHover }) {
         <ringGeometry args={[Math.max(zone.size[0], zone.size[1]) * 0.42, Math.max(zone.size[0], zone.size[1]) * 0.48, 32]} />
         <meshBasicMaterial color={tone} transparent opacity={elevated ? 0.32 : 0.12} side={2} />
       </mesh>
+
+      <PulseHalo size={zone.size} color={tone} active={isPlaybackActive} />
 
       {Array.from({ length: zone.buildingCount }).map((_, index) => {
         const row = Math.floor(index / 2);
@@ -550,7 +577,16 @@ function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onCl
   );
 }
 
-export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone, showOverlay = true, onCloseOverlay }) {
+export default function City3D({
+  zoneStates,
+  metrics,
+  activeZoneId,
+  pulseZoneIds = [],
+  playbackStage,
+  onSelectZone,
+  showOverlay = true,
+  onCloseOverlay,
+}) {
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
   const lights = [
     [-22, 0, -12, '#f4f4f5'],
@@ -587,6 +623,7 @@ export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone
             zone={zone}
             isHovered={hoveredZoneId === zone.id}
             isSelected={activeZoneId === zone.id}
+            isPlaybackActive={pulseZoneIds.includes(zone.id)}
             onSelect={onSelectZone}
             onHover={setHoveredZoneId}
           />
@@ -616,6 +653,14 @@ export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone
           Traffic, protest, and police markers respond to the backend payload.
         </span>
       </div>
+
+      {playbackStage ? (
+        <div className="pointer-events-none absolute right-4 top-4 max-w-[340px] rounded-2xl border border-cyan-400/14 bg-slate-950/78 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
+          <p className="uppercase tracking-[0.22em] text-cyan-300/75">Active Ripple Stage</p>
+          <p className="mt-2 text-sm font-semibold text-white">{playbackStage.title}</p>
+          <p className="mt-2 leading-6 text-slate-300">{playbackStage.detail}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
