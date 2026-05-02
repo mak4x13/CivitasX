@@ -30,10 +30,10 @@ export default function AgentReadoutPanel({ agents }) {
   return (
     <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
       <div className="mb-4">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Agent Readouts</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold text-white">How each city system is reacting</h2>
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">System briefing</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-white">What each city system is doing</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
-          These cards come directly from the backend agent outputs and explain the strongest pressure points.
+          Focus on the most urgent system risks and the recommended response.
         </p>
       </div>
 

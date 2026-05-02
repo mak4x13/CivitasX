@@ -103,38 +103,35 @@ function Header({
           </div>
 
           <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl xl:max-w-3xl">
-            Simulate a civic restriction before it hits the city.
+            Simulate policy impact with a judge-ready briefing.
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-            CivitasX turns a proposed policy into a live, multi-agent city response so teams can see disruption,
-            conflict, and safer alternatives before rollout.
+            Build a scenario, submit it, then use the simulation and briefing panels to explain outcomes clearly.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2.5">
             <ScenarioChip label="City" value={controls.city} />
-            <ScenarioChip label="Scenario" value={titleize(controls.scenario_type)} />
-            <ScenarioChip label="Roads" value={titleize(controls.road_closure_level)} />
-            <ScenarioChip label="Internet" value={titleize(controls.internet_shutdown)} />
+            <ScenarioChip label="Policy" value={titleize(controls.scenario_type)} />
             <ScenarioChip label="Duration" value={`${controls.duration_days} day${controls.duration_days > 1 ? 's' : ''}`} />
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.9fr]">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">Current Read</p>
-              <p className="mt-2 text-lg font-semibold text-white">What this simulation is signaling right now</p>
+              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">Scenario snapshot</p>
+              <p className="mt-2 text-lg font-semibold text-white">What the city is reacting to</p>
               <p className="mt-3 text-sm leading-7 text-slate-300">{narrative}</p>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-300">
-                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
-                  Digital fallback risk: <span className="font-semibold text-white">{metrics.digitalRisk}/100</span>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <span className="rounded-[20px] border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-300">
+                  Roads: <span className="font-semibold text-white">{titleize(controls.road_closure_level)}</span>
                 </span>
-                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
-                  Education continuity: <span className="font-semibold text-white">{metrics.educationContinuity}/100</span>
+                <span className="rounded-[20px] border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-300">
+                  Internet: <span className="font-semibold text-white">{titleize(controls.internet_shutdown)}</span>
                 </span>
               </div>
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">System Status</p>
+              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">System status</p>
               <div className="mt-3 flex items-center gap-3">
                 <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
                 <p className="text-sm font-semibold text-white">{requestLabel}</p>
@@ -151,45 +148,6 @@ function Header({
         </div>
       </div>
     </header>
-  );
-}
-
-function WorkflowStrip() {
-  const items = [
-    {
-      step: '1',
-      title: 'Set the decision',
-      detail: 'Pick the city, restriction type, and mitigation levers you want to test.',
-    },
-    {
-      step: '2',
-      title: 'Watch the ripple',
-      detail: 'The backend simulates transport, economy, education, internet, and sentiment reactions.',
-    },
-    {
-      step: '3',
-      title: 'Inspect the response',
-      detail: 'Use the city view, ripple playback, and decision brief to explain the impact quickly.',
-    },
-  ];
-
-  return (
-    <section className="grid gap-3 lg:grid-cols-3">
-      {items.map((item) => (
-        <div
-          key={item.step}
-          className="rounded-[26px] border border-white/10 bg-slate-950/60 p-4 shadow-[0_18px_55px_rgba(2,6,23,0.28)] backdrop-blur-xl"
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/10 text-sm font-semibold text-cyan-100">
-              {item.step}
-            </span>
-            <p className="font-display text-lg font-semibold text-white">{item.title}</p>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-slate-300">{item.detail}</p>
-        </div>
-      ))}
-    </section>
   );
 }
 
@@ -211,6 +169,127 @@ function SegmentedTabs({ items, activeKey, onChange }) {
         </button>
       ))}
     </div>
+  );
+}
+
+function CollapsibleSection({ title, subtitle, summary, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5"
+      >
+        <div className="min-w-0">
+          <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">{title}</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">{subtitle}</h2>
+          {summary ? <p className="mt-2 text-sm leading-6 text-slate-400">{summary}</p> : null}
+        </div>
+        <span className={`text-2xl leading-none transition ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open ? <div className="border-t border-white/10 p-4">{children}</div> : null}
+    </section>
+  );
+}
+
+function FloatingMetrics({ metrics, trends }) {
+  const rows = [
+    {
+      label: 'City Stability',
+      value: `${metrics.stabilityScore}/100`,
+      delta: trends?.city_stability,
+    },
+    {
+      label: 'Mobility',
+      value: `${metrics.mobility}/100`,
+      delta: trends?.mobility,
+    },
+    {
+      label: 'Economic Stress',
+      value: `${metrics.economicImpact}/100`,
+      delta: trends?.economic_impact,
+      invert: true,
+    },
+    {
+      label: 'Protest Risk',
+      value: `${metrics.protestRisk}/100`,
+      delta: trends?.protest_probability,
+      invert: true,
+    },
+  ];
+
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+      <div className="mb-4">
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Live metrics</p>
+        <p className="mt-2 text-sm text-slate-400">Key city indicators that update with the simulation.</p>
+      </div>
+      <div className="grid gap-3">
+        {rows.map((row) => {
+          const numeric = Number(row.delta || 0);
+          const positive = numeric > 0;
+          const negative = numeric < 0;
+          const arrow = numeric === 0 ? '→' : positive ? '↑' : '↓';
+          const tone = row.invert ? (positive ? 'text-rose-300' : negative ? 'text-emerald-300' : 'text-slate-300') : positive ? 'text-emerald-300' : negative ? 'text-amber-300' : 'text-slate-300';
+
+          return (
+            <div key={row.label} className="rounded-[22px] border border-white/10 bg-slate-950/85 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-400">{row.label}</p>
+                <span className={`text-sm font-semibold ${tone}`}>{arrow} {row.delta !== undefined ? Math.abs(numeric) : '--'}</span>
+              </div>
+              <p className="mt-3 text-2xl font-semibold text-white">{row.value}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AIRecommendationPanel({ recommendation }) {
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+      <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">AI Recommendation</p>
+      <p className="mt-3 text-sm leading-6 text-slate-300">{recommendation || 'Run a simulation to get a suggested rollout strategy and risk summary.'}</p>
+      <div className="mt-5 rounded-[22px] border border-cyan-400/15 bg-cyan-400/10 p-4 text-sm text-cyan-100">
+        <p className="font-semibold">Suggested action</p>
+        <p className="mt-2 text-slate-200">{recommendation || 'Await simulation results.'}</p>
+      </div>
+    </section>
+  );
+}
+
+function TimelinePanel({ stages, activeIndex, onSelect }) {
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Impact timeline</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Cause to effect progression</h2>
+        </div>
+        <p className="text-sm text-slate-400">Tap a point to jump ahead.</p>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {stages.map((stage, index) => (
+          <button
+            key={stage.id}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={`min-w-[180px] rounded-[22px] border px-4 py-4 text-left transition ${
+              activeIndex === index ? 'border-cyan-400 bg-cyan-400/10 text-white' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/20 hover:bg-white/10'
+            }`}
+          >
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{stage.timestamp || `T+${index * 2}h`}</p>
+            <p className="mt-2 font-semibold">{stage.title}</p>
+            <p className="mt-1 text-sm text-slate-400">{stage.detail}</p>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -273,12 +352,12 @@ function LiveFeedPanel({ consequences }) {
   return (
     <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
       <div className="mb-4">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Live Feed</p>
-        <h2 className="mt-2 font-display text-xl font-semibold text-white">What is changing first</h2>
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Key signals</p>
+        <h2 className="mt-2 font-display text-xl font-semibold text-white">What is moving first</h2>
       </div>
 
       <div className="space-y-3">
-        {consequences.map((entry) => (
+        {consequences.slice(0, 4).map((entry) => (
           <div key={entry} className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-slate-300">
             {entry}
           </div>
@@ -488,25 +567,22 @@ export default function App() {
     <div className="relative min-h-screen px-4 py-4 lg:px-6 lg:py-6">
       <AlertSystem alerts={alerts} onDismiss={(id) => setAlerts((current) => current.filter((alert) => alert.id !== id))} />
 
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1680px] flex-col gap-5">
-        <Header
-          controls={controls}
-          metrics={visualMetrics}
-          requestLabel={requestLabel}
-          requestDetail={requestDetail}
-          requestState={requestState}
-          selectedCity={selectedCity}
-          simulation={simulation}
-        />
+      <div className="mx-auto grid min-h-[calc(100vh-2rem)] w-full max-w-[1680px] gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-5 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-1">
+          <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+            <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">CivicLens AI</p>
+            <h1 className="mt-3 text-3xl font-semibold text-white">Live city policy simulation</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-300">Build a policy, submit it, and watch the city react in real time.</p>
+          </section>
 
-        {simulation ? (
-          <ConflictBanner conflicts={simulation.conflicts} recommendation={simulation.agents?.advisor?.recommendation} />
-        ) : null}
+          <FloatingMetrics metrics={visualMetrics} trends={simulation?.comparison?.score_deltas} />
 
-        <WorkflowStrip />
-
-        <main className="grid flex-1 gap-5 xl:grid-cols-[320px_minmax(0,1fr)_380px]">
-          <div className="space-y-4 xl:max-h-[calc(100vh-170px)] xl:overflow-y-auto xl:pr-1">
+          <CollapsibleSection
+            title="Scenario settings"
+            subtitle="Set the policy inputs"
+            summary={`${controls.city} · ${titleize(controls.scenario_type)} · ${controls.duration_days} day${controls.duration_days > 1 ? 's' : ''}`}
+            defaultOpen
+          >
             <ControlPanel
               controls={controls}
               options={metadata?.options}
@@ -518,31 +594,39 @@ export default function App() {
               requestState={requestState}
               generatedBy={simulation?.generated_by}
             />
-          </div>
+          </CollapsibleSection>
 
-          <div className="space-y-4">
-            <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Simulation Workspace</p>
-                  <h2 className="mt-2 font-display text-2xl font-semibold text-white">Watch the city or inspect the ripple</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Use the 3D city for spatial impact, the district map for zone stress, and the ripple view for the
-                    agent chain reaction.
-                  </p>
-                </div>
+          <AIRecommendationPanel recommendation={simulation?.agents?.advisor?.recommendation} />
+        </div>
 
-                <SegmentedTabs
-                  items={[
-                    { key: 'city', label: '3D City' },
-                    { key: 'map', label: 'District Map' },
-                    { key: 'ripple', label: 'Ripple Flow' },
-                  ]}
-                  activeKey={workspaceTab}
-                  onChange={setWorkspaceTab}
-                />
+        <div className="space-y-5">
+          {simulation ? (
+            <ConflictBanner conflicts={simulation.conflicts} recommendation={simulation.agents?.advisor?.recommendation} />
+          ) : null}
+
+          <CollapsibleSection
+            title="Simulation workspace"
+            subtitle="View the city or ripple flow"
+            summary={workspaceTab === 'ripple' ? 'Showing the agent chain reaction' : 'Exploring the city and district map'}
+            defaultOpen
+          >
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">City view</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Interactive 3D simulation</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Your policy choice animates the city and powers the ripple effect.</p>
               </div>
-            </section>
+
+              <SegmentedTabs
+                items={[
+                  { key: 'city', label: '3D City' },
+                  { key: 'map', label: 'District Map' },
+                  { key: 'ripple', label: 'Ripple Flow' },
+                ]}
+                activeKey={workspaceTab}
+                onChange={setWorkspaceTab}
+              />
+            </div>
 
             {workspaceTab === 'ripple' ? (
               <AgentFlowPanel
@@ -559,7 +643,7 @@ export default function App() {
               />
             ) : (
               <>
-                <div className="relative h-[620px] min-h-[620px] lg:h-[720px] lg:min-h-[720px] xl:h-[calc(100vh-270px)] xl:min-h-[680px] xl:overflow-hidden">
+                <div className="relative h-[580px] min-h-[580px] lg:h-[680px] lg:min-h-[680px] xl:h-[calc(100vh-250px)] xl:min-h-[640px] xl:overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/70 shadow-[0_20px_80px_rgba(2,6,23,0.45)]">
                   <City3D
                     zoneStates={zoneStates}
                     metrics={visualMetrics}
@@ -586,27 +670,32 @@ export default function App() {
                 />
               </>
             )}
-          </div>
+          </CollapsibleSection>
 
-          <div className="space-y-4 xl:max-h-[calc(100vh-170px)] xl:overflow-y-auto xl:pr-1">
-            <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <CollapsibleSection
+            title="Decision briefing"
+            subtitle="Summary, systems, and stakeholders"
+            summary="Expand to see the judge-ready briefing and detailed insights."
+            defaultOpen={false}
+          >
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Decision Briefing</p>
-                  <h2 className="mt-2 font-display text-2xl font-semibold text-white">Read the outcome without hunting for it</h2>
+                  <h2 className="mt-2 font-display text-2xl font-semibold text-white">Explain the result clearly</h2>
                 </div>
 
                 <SegmentedTabs
                   items={[
-                    { key: 'brief', label: 'Brief' },
-                    { key: 'agents', label: 'Agents' },
-                    { key: 'people', label: 'People' },
+                    { key: 'brief', label: 'Summary' },
+                    { key: 'agents', label: 'Systems' },
+                    { key: 'people', label: 'Stakeholders' },
                   ]}
                   activeKey={insightTab}
                   onChange={setInsightTab}
                 />
               </div>
-            </section>
+            </div>
 
             {insightTab === 'brief' ? (
               <>
@@ -623,8 +712,17 @@ export default function App() {
                 <GovernancePanel frame={governanceFrame} />
               </>
             ) : null}
-          </div>
-        </main>
+          </CollapsibleSection>
+
+          <TimelinePanel
+            stages={playbackStages.length ? playbackStages : [{ id: 'idle', title: 'Awaiting simulation', detail: 'Run a scenario to populate the timeline.' }]}
+            activeIndex={activePlaybackIndex}
+            onSelect={(index) => {
+              setActivePlaybackIndex(index);
+              setPlaybackRunning(true);
+            }}
+          />
+        </div>
       </div>
     </div>
   );

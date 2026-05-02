@@ -67,8 +67,9 @@ export default function AnalysisPanel({ simulation, actionPlan }) {
   return (
     <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
       <div className="mb-4">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Decision Brief</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold text-white">What the backend is recommending</h2>
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Judges' summary</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-white">What this policy does next</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-300">Focus on the headline outcome, top risks, and the best next step.</p>
       </div>
 
       <div className="space-y-4">
@@ -82,9 +83,9 @@ export default function AnalysisPanel({ simulation, actionPlan }) {
         </PanelBlock>
 
         <div className="grid gap-4">
-          <PanelBlock title="Priority risks">
+          <PanelBlock title="Top risks">
             <div className="space-y-2">
-              {priorityRisks.map((item) => (
+              {priorityRisks.slice(0, 3).map((item) => (
                 <div key={item} className="flex gap-3 rounded-[20px] border border-white/10 bg-black/20 p-3">
                   <span className="mt-2 h-2 w-2 rounded-full bg-amber-300" />
                   <p className="text-sm leading-6 text-slate-300">{item}</p>
@@ -93,9 +94,9 @@ export default function AnalysisPanel({ simulation, actionPlan }) {
             </div>
           </PanelBlock>
 
-          <PanelBlock title="Implementation strategy">
+          <PanelBlock title="Recommended actions">
             <div className="space-y-2">
-              {actionPlan.map((step) => (
+              {actionPlan.slice(0, 3).map((step) => (
                 <div key={step.label} className="rounded-[20px] border border-white/10 bg-black/20 p-3">
                   <p className="text-[0.64rem] uppercase tracking-[0.18em] text-cyan-300/75">{step.label}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{step.detail}</p>
@@ -133,10 +134,6 @@ export default function AnalysisPanel({ simulation, actionPlan }) {
               <ComparisonPill label="Protest Risk" value={simulation.comparison.score_deltas.protest_probability} invert />
             </div>
           ) : null}
-        </PanelBlock>
-
-        <PanelBlock title="Agent pulse" subtitle="Open the Agents tab for the full readouts.">
-          <AgentPulse agents={simulation.agents} />
         </PanelBlock>
       </div>
     </section>

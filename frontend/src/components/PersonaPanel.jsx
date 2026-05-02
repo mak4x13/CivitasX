@@ -22,10 +22,10 @@ export default function PersonaPanel({ personas }) {
   return (
     <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
       <div className="mb-4">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">People Layer</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold text-white">Who feels the disruption first</h2>
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Stakeholder impact</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-white">Who is affected most</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
-          These persona cards translate system-level effects into stakeholder impact.
+          See the top stakeholder groups and the priorities they need next.
         </p>
       </div>
 

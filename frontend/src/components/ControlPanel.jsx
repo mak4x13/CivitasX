@@ -156,15 +156,12 @@ export default function ControlPanel({
       <SectionTitle
         eyebrow="Scenario Builder"
         title="Define the policy decision"
-        subtitle="Keep the left side for inputs only. Submit a scenario, then use the center and right panels to explain the result."
+        subtitle="Use the left panel to set the scenario, then review the simulation and briefing on the right."
       />
 
       <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Active city profile</p>
         <p className="mt-2 text-sm leading-6 text-slate-300">{citySummary || 'Waiting for city metadata from the backend.'}</p>
-        <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[0.68rem] uppercase tracking-[0.18em] text-slate-300">
-          Summary mode: {generatedBy === 'groq' ? 'Groq SDK' : 'Rule-based fallback'}
-        </div>
       </div>
 
       <div className="mt-5 space-y-5">

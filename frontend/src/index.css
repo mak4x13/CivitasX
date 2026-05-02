@@ -17,11 +17,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: 'Manrope', sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(34, 211, 238, 0.11), transparent 22%),
-    radial-gradient(circle at 82% 16%, rgba(251, 191, 36, 0.06), transparent 16%),
-    radial-gradient(circle at 14% 78%, rgba(16, 185, 129, 0.05), transparent 18%),
-    linear-gradient(180deg, #05070e 0%, #03101c 48%, #020617 74%, #020202 100%);
+  background: linear-gradient(180deg, #07101f 0%, #02060f 100%);
   color: #e5e7eb;
 }
 
@@ -31,11 +27,11 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 46px 46px;
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 56px 56px;
   mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
-  opacity: 0.18;
+  opacity: 0.08;
 }
 
 * {
