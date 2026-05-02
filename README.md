@@ -1,8 +1,23 @@
 # CivitasX
 
-City-aware policy simulation platform for hackathons and rapid prototyping.
+[![Backend](https://img.shields.io/badge/backend-FastAPI-059669?style=for-the-badge&logo=fastapi&logoColor=white)](#full-stack-quick-start)
+[![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-2563eb?style=for-the-badge&logo=react&logoColor=white)](#full-stack-quick-start)
+[![Visualization](https://img.shields.io/badge/visualization-Three.js-111827?style=for-the-badge&logo=threedotjs&logoColor=white)](#frontend-mapping-guide)
+[![AI](https://img.shields.io/badge/AI-Groq%20SDK-f97316?style=for-the-badge)](#optional-groq-setup)
+[![Tests](https://img.shields.io/badge/tests-Pytest-7c3aed?style=for-the-badge&logo=pytest&logoColor=white)](#full-stack-quick-start)
 
-Tagline: `See the impact before the decision.`
+> City-aware policy simulation platform for hackathons and rapid prototyping.  
+> Tagline: `See the impact before the decision.`
+
+[![Quick Start](https://img.shields.io/badge/Quick-Start-0f172a?style=flat-square)](#full-stack-quick-start)
+[![Backend API](https://img.shields.io/badge/Backend-API-0f766e?style=flat-square)](#backend-api)
+[![Frontend Mapping](https://img.shields.io/badge/Frontend-Mapping-f59e0b?style=flat-square)](#frontend-mapping-guide)
+[![Groq Setup](https://img.shields.io/badge/Groq-Setup-f97316?style=flat-square)](#optional-groq-setup)
+[![Reference Files](https://img.shields.io/badge/Reference-Files-334155?style=flat-square)](#reference-files)
+
+## Stack Tags
+
+`FastAPI` `Pydantic` `Pytest` `React` `Vite` `Tailwind CSS` `Three.js` `Groq SDK` `Policy Simulation` `Multi-Agent Reasoning`
 
 ## Overview
 
@@ -28,6 +43,15 @@ This repository now contains both:
 
 - a FastAPI backend for simulation and agent reasoning
 - a Vite/React frontend for visual policy simulation
+
+## At A Glance
+
+| Area | What it does | Main files |
+| --- | --- | --- |
+| Backend | Simulates the policy outcome and returns agent-by-agent reasoning | [app/main.py](C:/Users/Lenovo/Desktop/CivitasX/app/main.py), [app/api.py](C:/Users/Lenovo/Desktop/CivitasX/app/api.py), [app/simulation.py](C:/Users/Lenovo/Desktop/CivitasX/app/simulation.py) |
+| Frontend | Renders the city, metrics, agent flow, and comparison UI | [frontend/src/App.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/App.jsx), [frontend/src/components/City3D.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/City3D.jsx), [frontend/src/components/AgentFlowPanel.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/AgentFlowPanel.jsx) |
+| AI Summary | Optionally upgrades the executive summary using Groq | [app/llm.py](C:/Users/Lenovo/Desktop/CivitasX/app/llm.py) |
+| Validation | Protects the backend contract and simulation behavior | [tests/test_simulation.py](C:/Users/Lenovo/Desktop/CivitasX/tests/test_simulation.py) |
 
 ## Current Status
 
@@ -78,31 +102,21 @@ CivitasX/
 
 ## Backend vs Frontend
 
-### Backend Responsibility
+| Layer | Responsibility | Output |
+| --- | --- | --- |
+| Backend | Scenario validation, city loading, agent simulation, conflict detection, alternative generation | Structured JSON for the dashboard |
+| Frontend | Visual simulation, zone rendering, metrics, agent flow, scenario interaction, comparison display | Judge-facing interactive experience |
 
-The backend already handles:
-
-- scenario input validation
-- city profile loading
-- agent-by-agent impact simulation
-- score calculation
-- conflict detection
-- safer alternative generation
-- compare-mode response generation
-
-### Frontend Responsibility
-
-The frontend now handles:
-
-- policy controls and form inputs
-- live visualization of zone impacts
-- metrics dashboard
-- agent cards
-- agent network graph
-- comparison mode UI
-- animations and visual transitions
+> The project should feel visual-first.  
+> The strongest frontend features are `zone_impacts`, `agent_network`, `main_risks`, and `comparison`.
 
 ## Full-Stack Quick Start
+
+| Service | URL |
+| --- | --- |
+| Backend API | `http://127.0.0.1:8000` |
+| FastAPI Docs | `http://127.0.0.1:8000/docs` |
+| Frontend Dev Server | `http://127.0.0.1:5173` |
 
 ### 1. Create and activate a virtual environment
 
@@ -125,18 +139,6 @@ This now installs the Groq Python SDK as part of the normal backend setup.
 python -m uvicorn app.main:app --reload
 ```
 
-Base URL:
-
-```text
-http://127.0.0.1:8000
-```
-
-Interactive docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
 ### 4. Install frontend dependencies
 
 ```powershell
@@ -157,12 +159,6 @@ cd frontend
 npm run dev
 ```
 
-Frontend default URL:
-
-```text
-http://127.0.0.1:5173
-```
-
 ### 6. Run checks
 
 ```powershell
@@ -173,6 +169,15 @@ npm run build
 ```
 
 ## Backend API
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /` | Basic service info |
+| `GET /health` | Health check |
+| `GET /cities` | Supported cities and summaries |
+| `GET /metadata` | Default scenario and frontend control options |
+| `POST /simulate` | Main simulation endpoint |
+| `POST /compare` | Before-vs-after scenario comparison |
 
 ### `GET /`
 
@@ -322,6 +327,9 @@ Top-level fields:
 ## Frontend Mapping Guide
 
 This section is the handoff for frontend development.
+
+> Frontend priority order:
+> `city visualization` -> `agent flow` -> `metrics` -> `conflict explanation` -> `alternative policy`
 
 ### 1. Left Panel: Policy Controls
 
@@ -532,11 +540,12 @@ Recommended simple UI flow:
 
 For the fastest handoff:
 
-- Next.js or React
+- React
+- Vite
 - Tailwind CSS
-- Recharts for metrics
-- React Flow for agent dependency graph
-- Framer Motion for transitions
+- Three.js / React Three Fiber
+- React Flow
+- Framer Motion
 
 Current frontend workspace:
 
@@ -580,6 +589,19 @@ Notes:
 - if no Groq key is present, the backend still works
 - only the executive summary falls back to deterministic text
 - the current integration uses the official `groq` Python SDK
+
+## Useful Links
+
+| Resource | Link |
+| --- | --- |
+| Backend entrypoint | [app/main.py](C:/Users/Lenovo/Desktop/CivitasX/app/main.py) |
+| Backend API routes | [app/api.py](C:/Users/Lenovo/Desktop/CivitasX/app/api.py) |
+| Simulation engine | [app/simulation.py](C:/Users/Lenovo/Desktop/CivitasX/app/simulation.py) |
+| Groq wrapper | [app/llm.py](C:/Users/Lenovo/Desktop/CivitasX/app/llm.py) |
+| Frontend shell | [frontend/src/App.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/App.jsx) |
+| 3D city scene | [frontend/src/components/City3D.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/City3D.jsx) |
+| Agent flow panel | [frontend/src/components/AgentFlowPanel.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/AgentFlowPanel.jsx) |
+| Backend tests | [tests/test_simulation.py](C:/Users/Lenovo/Desktop/CivitasX/tests/test_simulation.py) |
 
 ## Important Notes For Frontend Development
 

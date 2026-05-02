@@ -13,24 +13,40 @@ function severityTone(level) {
 export default function ConflictBanner({ conflicts, recommendation }) {
   const hasConflict = conflicts && conflicts.length > 0;
   const tone = hasConflict ? (conflicts.length > 1 ? 'critical' : 'warning') : 'safe';
+  const primaryConflict = hasConflict ? conflicts[0] : null;
 
   return (
-    <section className={`rounded-[28px] border px-5 py-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl ${severityTone(tone)}`}>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <section className={`rounded-[30px] border px-5 py-4 shadow-[0_20px_80px_rgba(2,6,23,0.35)] backdrop-blur-xl ${severityTone(tone)}`}>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="max-w-4xl">
-          <p className="text-[0.7rem] uppercase tracking-[0.32em] opacity-75">Conflict Detector</p>
-          <h2 className="mt-2 font-display text-2xl font-semibold">
-            {hasConflict ? 'Policy conflict detected' : 'No major policy conflict detected'}
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.22em]">
+            Conflict Detector
+            <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[0.62rem]">
+              {hasConflict ? `${conflicts.length} signal${conflicts.length > 1 ? 's' : ''}` : 'Stable'}
+            </span>
+          </div>
+
+          <h2 className="mt-3 font-display text-2xl font-semibold">
+            {hasConflict ? 'This policy mix creates a cross-system conflict.' : 'No major policy conflict is currently flagged.'}
           </h2>
-          <p className="mt-2 text-sm leading-6 opacity-90">
-            {hasConflict
-              ? conflicts[0]
-              : 'The current scenario does not contain a major cross-agent contradiction. The system is still tracking downstream effects.'}
+          <p className="mt-2 text-sm leading-7 opacity-90">
+            {primaryConflict ||
+              'The current scenario is still being monitored for downstream effects, but no major contradiction has been flagged across agents.'}
           </p>
+
+          {conflicts && conflicts.length > 1 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {conflicts.slice(1, 3).map((item) => (
+                <span key={item} className="rounded-full border border-white/10 bg-black/15 px-3 py-1.5 text-xs">
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 lg:max-w-[420px]">
-          <p className="text-xs uppercase tracking-[0.22em] opacity-70">Advisor Response</p>
+        <div className="rounded-[24px] border border-white/10 bg-black/15 px-4 py-3 xl:max-w-[420px]">
+          <p className="text-[0.68rem] uppercase tracking-[0.18em] opacity-70">Recommended response</p>
           <p className="mt-2 text-sm leading-6">{recommendation}</p>
         </div>
       </div>

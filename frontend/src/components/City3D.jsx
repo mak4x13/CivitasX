@@ -183,13 +183,13 @@ function createLabelTexture(text) {
   context.fill();
   context.stroke();
 
-  context.font = '700 54px Inter, sans-serif';
+  context.font = '700 52px Space Grotesk, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#f8fafc';
   context.fillText(text, width / 2, height / 2 - 10);
 
-  context.font = '500 24px Inter, sans-serif';
+  context.font = '600 22px Manrope, sans-serif';
   context.fillStyle = '#d4d4d8';
   context.fillText('DEPARTMENT', width / 2, height / 2 + 48);
 
@@ -490,7 +490,7 @@ function CityVehicles({ trafficLevel }) {
   );
 }
 
-function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onClose }) {
+function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onClose, closable = true }) {
   const width = 1100;
   const height = 720;
   const scale = 18;
@@ -499,19 +499,21 @@ function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onCl
   const toY = (z) => height / 2 - z * scale;
 
   return (
-    <div className="pointer-events-auto absolute inset-4 z-20 overflow-hidden rounded-[24px] border border-white/10 bg-black/82 shadow-[0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+    <div className="pointer-events-auto absolute inset-4 z-20 overflow-hidden rounded-[28px] border border-white/10 bg-black/82 shadow-[0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-400">City Outline</p>
-          <p className="text-xs text-slate-200">Zone-level stress map</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-400">District Map</p>
+          <p className="text-xs text-slate-200">Zone-level stress view</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:bg-white/10"
-        >
-          Close
-        </button>
+        {closable ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:bg-white/10"
+          >
+            Close
+          </button>
+        ) : null}
       </div>
 
       <div className="h-[calc(100%-56px)] w-full p-2 sm:p-4">
@@ -562,7 +564,7 @@ function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onCl
           })}
 
           <text x="28" y="38" fill="#f8fafc" fontSize="18" fontWeight="700" letterSpacing="0.3em">
-            CITY GRID
+            DISTRICT MAP
           </text>
           <text x="28" y="62" fill="#d4d4d8" fontSize="11" fontWeight="500" letterSpacing="0.2em">
             backend-driven zone stress map
@@ -585,6 +587,7 @@ export default function City3D({
   playbackStage,
   onSelectZone,
   showOverlay = true,
+  overlayClosable = true,
   onCloseOverlay,
 }) {
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
@@ -599,8 +602,8 @@ export default function City3D({
   ];
 
   return (
-    <div className="relative h-full min-h-[620px] overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60 shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
-      <Canvas shadows camera={{ position: [28, 26, 24], fov: 42 }}>
+    <div className="relative h-full min-h-[620px] overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,#030712_0%,#020617_58%,#010101_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
+      <Canvas className="h-full w-full" shadows camera={{ position: [28, 26, 24], fov: 42 }}>
         <color attach="background" args={['#050505']} />
         <ambientLight intensity={1.45} color="#ffffff" />
         <directionalLight position={[18, 28, 14]} intensity={4.3} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} color="#ffffff" />
@@ -608,7 +611,7 @@ export default function City3D({
         <pointLight position={[-14, 10, -10]} intensity={1.45} color="#ffffff" />
         <pointLight position={[14, 8, 10]} intensity={1.25} color="#f8fafc" />
         <pointLight position={[0, 18, 0]} intensity={1.05} color="#ffffff" />
-        <gridHelper args={[70, 70, '#f8fafc', '#262626']} position={[0, 0.03, 0]} />
+        <gridHelper args={[70, 70, '#d4d4d8', '#18181b']} position={[0, 0.03, 0]} />
 
         <RoadNetwork />
         <CityVehicles trafficLevel={metrics.trafficLevel} />
@@ -644,23 +647,42 @@ export default function City3D({
           activeZoneId={activeZoneId}
           hoveredZoneId={hoveredZoneId}
           onClose={onCloseOverlay}
+          closable={overlayClosable}
         />
       ) : null}
 
-      <div className="pointer-events-none absolute left-4 top-4 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
-        <span className="font-semibold text-white">View:</span> orbit, zoom, and inspect district-level simulation effects.
-        <span className="mt-1 block text-[0.7rem] text-slate-400">
-          Traffic, protest, and police markers respond to the backend payload.
-        </span>
+      <div className="pointer-events-none absolute left-4 top-4 rounded-[22px] border border-white/10 bg-slate-950/72 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
+        <p className="text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">3D District View</p>
+        <p className="mt-2 text-sm font-semibold text-white">Orbit, zoom, and click a district to inspect it.</p>
+        <p className="mt-2 text-xs leading-6 text-slate-400">Traffic, protest, and police markers respond to the backend payload.</p>
       </div>
 
       {playbackStage ? (
-        <div className="pointer-events-none absolute right-4 top-4 max-w-[340px] rounded-2xl border border-cyan-400/14 bg-slate-950/78 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
+        <div className="pointer-events-none absolute right-4 top-4 max-w-[340px] rounded-[22px] border border-cyan-400/14 bg-slate-950/78 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
           <p className="uppercase tracking-[0.22em] text-cyan-300/75">Active Ripple Stage</p>
           <p className="mt-2 text-sm font-semibold text-white">{playbackStage.title}</p>
           <p className="mt-2 leading-6 text-slate-300">{playbackStage.detail}</p>
         </div>
       ) : null}
+
+      <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-2">
+        <span className="rounded-full border border-white/10 bg-slate-950/72 px-3 py-1.5 text-xs text-slate-200">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-300" />
+          Stable
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/72 px-3 py-1.5 text-xs text-slate-200">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-amber-300" />
+          Watch
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/72 px-3 py-1.5 text-xs text-slate-200">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-orange-300" />
+          Tense
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/72 px-3 py-1.5 text-xs text-slate-200">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-300" />
+          Critical
+        </span>
+      </div>
     </div>
   );
 }

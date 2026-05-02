@@ -20,37 +20,39 @@ export default function PersonaPanel({ personas }) {
   }
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Stakeholder Layer</p>
-        <h2 className="mt-2 font-display text-xl font-semibold text-white">Who gets hit first</h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Lightweight persona reactions make the simulation feel human instead of purely abstract.
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">People Layer</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-white">Who feels the disruption first</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          These persona cards translate system-level effects into stakeholder impact.
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-3">
         {personas.map((persona) => (
-          <div key={persona.id} className="rounded-2xl border border-white/8 bg-white/5 p-4">
+          <article key={persona.id} className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-white">{persona.name}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">{persona.focus}</p>
+                <p className="text-lg font-semibold text-white">{persona.name}</p>
+                <p className="mt-1 text-[0.68rem] uppercase tracking-[0.18em] text-slate-400">{persona.focus}</p>
               </div>
-              <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClass(persona.status)}`}>
-                {persona.status} • {persona.score}/100
+              <div className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${toneClass(persona.status)}`}>
+                {persona.status} - {persona.score}/100
               </div>
             </div>
+
             <p className="mt-3 text-sm leading-6 text-slate-300">{persona.summary}</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-white/10 bg-slate-900/60 px-2.5 py-1 text-slate-200">
-                Exposure zone: {persona.zone}
-              </span>
+
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">
+              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">Exposure zone: {persona.zone}</span>
             </div>
-            <p className="mt-3 rounded-2xl border border-white/8 bg-slate-900/60 p-3 text-sm text-slate-200">
-              Mitigation: {persona.driver}
-            </p>
-          </div>
+
+            <div className="mt-4 rounded-[20px] border border-white/10 bg-black/20 p-3">
+              <p className="text-[0.64rem] uppercase tracking-[0.18em] text-slate-400">Mitigation priority</p>
+              <p className="mt-2 text-sm leading-6 text-slate-200">{persona.driver}</p>
+            </div>
+          </article>
         ))}
       </div>
     </section>
