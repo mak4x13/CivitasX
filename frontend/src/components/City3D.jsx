@@ -104,28 +104,6 @@ function CameraControls() {
   return null;
 }
 
-function MarkerCluster({ zone, type, count, color, offsetY }) {
-  if (count === 0) {
-    return null;
-  }
-
-  return (
-    <group position={[zone.position[0], offsetY, zone.position[2]]}>
-      {Array.from({ length: count }).map((_, index) => {
-        const spread = type === 'protest' ? 1.8 : 1.2;
-        const x = Math.cos(index * 1.7) * spread;
-        const z = Math.sin(index * 1.7) * spread;
-        return (
-          <mesh key={`${type}-${zone.id}-${index}`} position={[x, 0, z]} castShadow>
-            <sphereGeometry args={[type === 'protest' ? 0.22 : 0.2, 16, 16]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} roughness={0.45} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
   canvas.width = 768;
@@ -173,6 +151,235 @@ function createLabelTexture(text) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
+}
+
+function createEntityLabelTexture(text, backgroundColor = 'rgba(22,28,38,0.95)', textColor = '#f8fafc') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return null;
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = backgroundColor;
+  context.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  context.lineWidth = 6;
+  context.beginPath();
+  context.moveTo(18, 12);
+  context.lineTo(canvas.width - 18, 12);
+  context.quadraticCurveTo(canvas.width - 8, 12, canvas.width - 8, 22);
+  context.lineTo(canvas.width - 8, canvas.height - 22);
+  context.quadraticCurveTo(canvas.width - 8, canvas.height - 12, canvas.width - 18, canvas.height - 12);
+  context.lineTo(18, canvas.height - 12);
+  context.quadraticCurveTo(8, canvas.height - 12, 8, canvas.height - 22);
+  context.lineTo(8, 22);
+  context.quadraticCurveTo(8, 12, 18, 12);
+  context.closePath();
+  context.fill();
+  context.stroke();
+
+  context.font = '700 32px Inter, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = textColor;
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function EntityLabel({ text, color, position }) {
+  const texture = useMemo(() => createEntityLabelTexture(text, 'rgba(15, 23, 42, 0.95)', color), [text, color]);
+
+  useEffect(() => {
+    return () => {
+      texture?.dispose();
+    };
+  }, [texture]);
+
+  if (!texture) {
+    return null;
+  }
+
+  return (
+    <sprite position={position} scale={[6.4, 1.6, 1]} renderOrder={20}>
+      <spriteMaterial map={texture} transparent depthWrite={false} depthTest={false} />
+    </sprite>
+  );
+}
+
+const ROAD_VERTICAL_LINES = [-12, 0, 12];
+const ROAD_HORIZONTAL_LINES = [-10, 0, 10];
+const CITY_BOUNDARY = {
+  xMin: -28,
+  xMax: 28,
+  zMin: -16,
+  zMax: 16,
+};
+
+function clampPointToBoundary([x, y, z], margin = 2.5) {
+  return [
+    Math.min(CITY_BOUNDARY.xMax - margin, Math.max(CITY_BOUNDARY.xMin + margin, x)),
+    y,
+    Math.min(CITY_BOUNDARY.zMax - margin, Math.max(CITY_BOUNDARY.zMin + margin, z)),
+  ];
+}
+
+function getEntityLabel(type) {
+  if (type === 'traffic') return 'Traffic Flow';
+  if (type === 'protest') return 'Protest Group';
+  if (type === 'police') return 'Police Response';
+  return 'City Unit';
+}
+
+function findNearestRoadOutsideZone(value, min, max, candidates) {
+  const outside = candidates.filter((road) => road < min || road > max);
+  if (outside.length > 0) {
+    return outside.reduce((best, road) => (Math.abs(road - value) < Math.abs(best - value) ? road : best), outside[0]);
+  }
+  return candidates.reduce((best, road) => (Math.abs(road - value) < Math.abs(best - value) ? road : best), candidates[0]);
+}
+
+function getZoneRoadPositions(zone) {
+  const halfWidth = zone.size[0] / 2;
+  const halfDepth = zone.size[1] / 2;
+  const xMin = zone.position[0] - halfWidth;
+  const xMax = zone.position[0] + halfWidth;
+  const zMin = zone.position[2] - halfDepth;
+  const zMax = zone.position[2] + halfDepth;
+
+  const roadX = clampPointToBoundary([
+    findNearestRoadOutsideZone(zone.position[0], xMin, xMax, ROAD_VERTICAL_LINES),
+    0.35,
+    zone.position[2],
+  ])[0];
+  const roadZ = clampPointToBoundary([
+    zone.position[0],
+    0.35,
+    findNearestRoadOutsideZone(zone.position[2], zMin, zMax, ROAD_HORIZONTAL_LINES),
+  ])[2];
+
+  return {
+    vertical: [roadX, 0.35, zone.position[2]],
+    horizontal: [zone.position[0], 0.35, roadZ],
+    corner: clampPointToBoundary([roadX, 0.35, roadZ]),
+  };
+}
+
+function getAlertTargetPosition(zone, type, zoneStates) {
+  const roads = getZoneRoadPositions(zone);
+  const referencePosition = roads.corner;
+  if (type === 'police') {
+    const protestZone = zoneStates.reduce((best, candidate) => {
+      if (!best || candidate.displayProtestPressure > best.displayProtestPressure) {
+        return candidate;
+      }
+      return best;
+    }, null);
+
+    if (protestZone && protestZone.id !== zone.id) {
+      return getZoneRoadPositions(protestZone).corner;
+    }
+
+    return referencePosition;
+  }
+
+  if (type === 'protest') {
+    return roads.vertical;
+  }
+
+  if (type === 'traffic') {
+    return roads.horizontal;
+  }
+
+  return referencePosition;
+}
+
+function isHighAlertZone(zone) {
+  return zone.riskBand === 'critical' || zone.displayProtestPressure >= 78 || zone.displayPolicePressure >= 78 || zone.displayTrafficPressure >= 78;
+}
+
+function buildEntityRoute(zone, type, highAlert, targetPosition) {
+  const roads = getZoneRoadPositions(zone);
+  const start = clampPointToBoundary(roads.corner);
+
+  const safe = (point) => clampPointToBoundary(point);
+
+  if (highAlert && targetPosition) {
+    return buildRoutePath([safe(start), safe(targetPosition), safe(start)]);
+  }
+
+  if (type === 'traffic') {
+    return buildRoutePath([
+      safe([roads.horizontal[0] - 5.5, 0.35, roads.horizontal[2]]),
+      safe([roads.horizontal[0] + 5.5, 0.35, roads.horizontal[2]]),
+      safe([start[0], 0.35, roads.horizontal[2]]),
+    ]);
+  }
+
+  if (type === 'police') {
+    return buildRoutePath([
+      safe([roads.vertical[0], 0.35, roads.vertical[2] - 4.2]),
+      safe([roads.vertical[0], 0.35, roads.vertical[2] + 4.2]),
+      safe([start[0], 0.35, start[2]]),
+    ]);
+  }
+
+  return buildRoutePath([
+    safe([roads.vertical[0], 0.35, roads.vertical[2] - 3.4]),
+    safe([roads.vertical[0], 0.35, roads.vertical[2] + 3.4]),
+    safe([start[0], 0.35, start[2]]),
+  ]);
+}
+
+function MarkerCluster({ zone, type, count, color, offsetY, label, targetPosition, highAlert, showLabel }) {
+  const groupRef = useRef();
+  const route = useMemo(() => buildEntityRoute(zone, type, highAlert, targetPosition), [zone, type, highAlert, targetPosition]);
+  const clusterMargin = type === 'protest' ? 2 : 1.6;
+  const initialPosition = useMemo(() => clampPointToBoundary(route.segments[0]?.current ?? [0, 0.35, 0], clusterMargin), [route]);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current || !route.segments.length || route.totalLength === 0) {
+      return;
+    }
+
+    const progressDistance = ((clock.elapsedTime * (highAlert ? 0.12 : 0.06)) % route.totalLength + route.totalLength) % route.totalLength;
+    const segment =
+      route.segments.find((entry) => progressDistance >= entry.start && progressDistance < entry.start + entry.length) ??
+      route.segments[route.segments.length - 1];
+    const localT = segment.length === 0 ? 0 : (progressDistance - segment.start) / segment.length;
+
+    const nextX = segment.current[0] + segment.dx * localT;
+    const nextZ = segment.current[2] + segment.dz * localT;
+    const clamped = clampPointToBoundary([nextX, segment.current[1], nextZ], clusterMargin);
+
+    groupRef.current.position.set(clamped[0], clamped[1], clamped[2]);
+    groupRef.current.rotation.y = Math.atan2(segment.dx, segment.dz);
+  });
+
+  if (count === 0) {
+    return null;
+  }
+
+  return (
+    <group ref={groupRef} position={initialPosition}>
+      {showLabel ? <EntityLabel text={label} color={color} position={[0, offsetY + 1.2, 0]} /> : null}
+      {Array.from({ length: count }).map((_, index) => {
+        return (
+          <mesh key={`${type}-${zone.id}-${index}`} position={[0, 0, 0]} castShadow>
+            <sphereGeometry args={[type === 'protest' ? 0.22 : 0.2, 16, 16]} />
+            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} roughness={0.45} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
 }
 
 function DepartmentLabel({ text, position }) {
@@ -256,7 +463,7 @@ function StreetLight({ position, color }) {
   );
 }
 
-function ZoneBlock({ zone, isHovered, isSelected, onSelect, onHover }) {
+function ZoneBlock({ zone, isHovered, isSelected, onSelect, onHover, zoneStates }) {
   const tone = riskTone(zone.riskBand);
   const elevated = isHovered || isSelected;
   const glowOpacity = elevated ? 0.35 : 0.2;
@@ -350,9 +557,39 @@ function ZoneBlock({ zone, isHovered, isSelected, onSelect, onHover }) {
 
       <DepartmentLabel text={zone.departmentName ?? zone.name} position={[0, 5.1, 0]} />
 
-      <MarkerCluster zone={zone} type="traffic" count={zone.trafficMarkers} color="#fbbf24" offsetY={0.34} />
-      <MarkerCluster zone={zone} type="protest" count={zone.protestMarkers} color="#fb7185" offsetY={0.56} />
-      <MarkerCluster zone={zone} type="police" count={zone.policeMarkers} color="#93c5fd" offsetY={0.82} />
+      <MarkerCluster
+        zone={zone}
+        type="traffic"
+        count={zone.trafficMarkers}
+        color="#fbbf24"
+        offsetY={0.34}
+        label={getEntityLabel('traffic')}
+        targetPosition={getAlertTargetPosition(zone, 'traffic', zoneStates)}
+        highAlert={isHighAlertZone(zone)}
+        showLabel={isHovered}
+      />
+      <MarkerCluster
+        zone={zone}
+        type="protest"
+        count={zone.protestMarkers}
+        color="#fb7185"
+        offsetY={0.56}
+        label={getEntityLabel('protest')}
+        targetPosition={getAlertTargetPosition(zone, 'protest', zoneStates)}
+        highAlert={isHighAlertZone(zone)}
+        showLabel={isHovered}
+      />
+      <MarkerCluster
+        zone={zone}
+        type="police"
+        count={zone.policeMarkers}
+        color="#93c5fd"
+        offsetY={0.82}
+        label={getEntityLabel('police')}
+        targetPosition={getAlertTargetPosition(zone, 'police', zoneStates)}
+        highAlert={isHighAlertZone(zone)}
+        showLabel={isHovered}
+      />
     </group>
   );
 }
@@ -361,26 +598,26 @@ function RoadNetwork() {
   return (
     <group>
       <mesh position={[0, -0.04, 0]} rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[58, 32]} />
+        <planeGeometry args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin, CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin]} />
         <meshStandardMaterial color="#101010" roughness={1} metalness={0} />
       </mesh>
       <mesh position={[0, 0.01, 0]} rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[58, 5.2]} />
+        <planeGeometry args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin, 5.2]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.92} metalness={0.01} emissive="#161616" emissiveIntensity={0.12} />
       </mesh>
       <mesh position={[0, 0.01, 0]} rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[5.2, 32]} />
+        <planeGeometry args={[5.2, CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.92} metalness={0.01} emissive="#161616" emissiveIntensity={0.12} />
       </mesh>
       {[-12, 0, 12].map((x) => (
         <mesh key={`stripe-x-${x}`} position={[x, 0.03, 0]} rotation-x={-Math.PI / 2}>
-          <planeGeometry args={[0.18, 32]} />
+          <planeGeometry args={[0.18, CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin]} />
           <meshStandardMaterial color="#d4d4d8" transparent opacity={0.3} emissive="#ffffff" emissiveIntensity={0.06} />
         </mesh>
       ))}
       {[-10, 0, 10].map((z) => (
         <mesh key={`stripe-z-${z}`} position={[0, 0.03, z]} rotation-x={-Math.PI / 2}>
-          <planeGeometry args={[58, 0.18]} />
+          <planeGeometry args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin, 0.18]} />
           <meshStandardMaterial color="#d4d4d8" transparent opacity={0.3} emissive="#ffffff" emissiveIntensity={0.06} />
         </mesh>
       ))}
@@ -388,43 +625,71 @@ function RoadNetwork() {
   );
 }
 
+function CityBarrier() {
+  return (
+    <group>
+      <mesh position={[0, 0.32, CITY_BOUNDARY.zMin]}>
+        <boxGeometry args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin + 4, 0.4, 0.8]} />
+        <meshStandardMaterial color="#1f2937" transparent opacity={0.45} />
+      </mesh>
+      <mesh position={[0, 0.32, CITY_BOUNDARY.zMax]}>
+        <boxGeometry args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin + 4, 0.4, 0.8]} />
+        <meshStandardMaterial color="#1f2937" transparent opacity={0.45} />
+      </mesh>
+      <mesh position={[CITY_BOUNDARY.xMin, 0.32, 0]}>
+        <boxGeometry args={[0.8, 0.4, CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin + 4]} />
+        <meshStandardMaterial color="#1f2937" transparent opacity={0.45} />
+      </mesh>
+      <mesh position={[CITY_BOUNDARY.xMax, 0.32, 0]}>
+        <boxGeometry args={[0.8, 0.4, CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin + 4]} />
+        <meshStandardMaterial color="#1f2937" transparent opacity={0.45} />
+      </mesh>
+    </group>
+  );
+}
+
 function buildTrafficLanes() {
+  const xMin = CITY_BOUNDARY.xMin + 4;
+  const xMax = CITY_BOUNDARY.xMax - 4;
+  const zMin = CITY_BOUNDARY.zMin + 2;
+  const zMax = CITY_BOUNDARY.zMax - 2;
+
   return [
     [
-      [-24, 0.35, -0.9],
-      [24, 0.35, -0.9],
+      [xMin, 0.35, -0.9],
+      [xMax, 0.35, -0.9],
     ],
     [
-      [24, 0.35, 0],
-      [-24, 0.35, 0],
+      [xMax, 0.35, 0],
+      [xMin, 0.35, 0],
     ],
     [
-      [-24, 0.35, 0.9],
-      [24, 0.35, 0.9],
+      [xMin, 0.35, 0.9],
+      [xMax, 0.35, 0.9],
     ],
     [
-      [-12.6, 0.35, -14],
-      [-12.6, 0.35, 14],
+      [-12.6, 0.35, zMin],
+      [-12.6, 0.35, zMax],
     ],
     [
-      [-12, 0.35, 14],
-      [-12, 0.35, -14],
+      [-12, 0.35, zMax],
+      [-12, 0.35, zMin],
     ],
     [
-      [-11.4, 0.35, -14],
-      [-11.4, 0.35, 14],
+      [-11.4, 0.35, zMin],
+      [-11.4, 0.35, zMax],
     ],
     [
-      [11.4, 0.35, 14],
-      [11.4, 0.35, -14],
+      [11.4, 0.35, zMax],
+      [11.4, 0.35, zMin],
     ],
     [
-      [12, 0.35, -14],
-      [12, 0.35, 14],
+      [12, 0.35, zMin],
+      [12, 0.35, zMax],
     ],
     [
-      [12.6, 0.35, 14],
-      [12.6, 0.35, -14],
+      [12.6, 0.35, zMax],
+      [12.6, 0.35, zMin],
     ],
   ];
 }
@@ -564,7 +829,12 @@ export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone
 
   return (
     <div className="relative h-full min-h-[620px] overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60 shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
-      <Canvas shadows camera={{ position: [28, 26, 24], fov: 42 }}>
+      <Canvas
+        className="absolute inset-0 h-full w-full"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        shadows
+        camera={{ position: [28, 26, 24], fov: 42 }}
+      >
         <color attach="background" args={['#050505']} />
         <ambientLight intensity={1.45} color="#ffffff" />
         <directionalLight position={[18, 28, 14]} intensity={4.3} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} color="#ffffff" />
@@ -572,9 +842,14 @@ export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone
         <pointLight position={[-14, 10, -10]} intensity={1.45} color="#ffffff" />
         <pointLight position={[14, 8, 10]} intensity={1.25} color="#f8fafc" />
         <pointLight position={[0, 18, 0]} intensity={1.05} color="#ffffff" />
-        <gridHelper args={[70, 70, '#f8fafc', '#262626']} position={[0, 0.03, 0]} />
+        <gridHelper
+          args={[CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin, 56, '#f8fafc', '#262626']}
+          position={[0, 0.03, 0]}
+          scale={[1, 1, (CITY_BOUNDARY.zMax - CITY_BOUNDARY.zMin) / (CITY_BOUNDARY.xMax - CITY_BOUNDARY.xMin)]}
+        />
 
         <RoadNetwork />
+        <CityBarrier />
         <CityVehicles trafficLevel={metrics.trafficLevel} />
 
         {lights.map(([x, y, z, color]) => (
@@ -585,6 +860,7 @@ export default function City3D({ zoneStates, metrics, activeZoneId, onSelectZone
           <ZoneBlock
             key={zone.id}
             zone={zone}
+            zoneStates={zoneStates}
             isHovered={hoveredZoneId === zone.id}
             isSelected={activeZoneId === zone.id}
             onSelect={onSelectZone}
