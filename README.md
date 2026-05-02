@@ -24,13 +24,21 @@ The simulation is designed to show ripple effects across:
 - public sentiment
 - protest risk
 
-This repository currently contains the **backend only**. The frontend is not built yet.
+This repository now contains both:
+
+- a FastAPI backend for simulation and agent reasoning
+- a Vite/React frontend for visual policy simulation
 
 ## Current Status
 
 Implemented:
 
 - FastAPI backend
+- Vite/React frontend
+- live frontend-to-backend integration
+- 3D city visualization
+- backend-driven zone stress visualization
+- backend-driven agent network visualization
 - city-aware simulation for `Islamabad`, `Lahore`, and `Karachi`
 - interconnected agent logic
 - conflict detection
@@ -41,11 +49,9 @@ Implemented:
 
 Not implemented yet:
 
-- frontend app
-- visual city grid
-- live charts
-- agent network UI
-- comparison UI
+- deployment setup
+- advanced caching or auth
+- production monitoring
 
 ## Repo Structure
 
@@ -58,6 +64,11 @@ CivitasX/
 |   |-- main.py              # FastAPI app entrypoint
 |   |-- models.py            # Request/response schemas
 |   `-- simulation.py        # Core multi-agent simulation engine
+|-- frontend/
+|   |-- src/
+|   |-- package.json
+|   |-- vite.config.js
+|   `-- .env.example
 |-- tests/
 |   `-- test_simulation.py   # Backend tests
 |-- policypulse_ai_project_brief.md
@@ -81,7 +92,7 @@ The backend already handles:
 
 ### Frontend Responsibility
 
-The future frontend should handle:
+The frontend now handles:
 
 - policy controls and form inputs
 - live visualization of zone impacts
@@ -91,7 +102,7 @@ The future frontend should handle:
 - comparison mode UI
 - animations and visual transitions
 
-## Backend Quick Start
+## Full-Stack Quick Start
 
 ### 1. Create and activate a virtual environment
 
@@ -108,7 +119,7 @@ python -m pip install -r requirements.txt
 
 This now installs the Groq Python SDK as part of the normal backend setup.
 
-### 3. Run the API
+### 3. Run the backend API
 
 ```powershell
 python -m uvicorn app.main:app --reload
@@ -126,11 +137,39 @@ Interactive docs:
 http://127.0.0.1:8000/docs
 ```
 
-### 4. Run checks
+### 4. Install frontend dependencies
+
+```powershell
+cd frontend
+npm install
+```
+
+Create a frontend env file if needed:
+
+```powershell
+copy .env.example .env
+```
+
+### 5. Run the frontend
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Frontend default URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+### 6. Run checks
 
 ```powershell
 python -m compileall app tests
 python -m pytest
+cd frontend
+npm run build
 ```
 
 ## Backend API
@@ -499,15 +538,16 @@ For the fastest handoff:
 - React Flow for agent dependency graph
 - Framer Motion for transitions
 
-Suggested frontend folder when it is created:
+Current frontend workspace:
 
 ```text
 frontend/
-|-- components/
-|-- lib/
-|-- pages/ or app/
-|-- styles/
-`-- types/
+|-- src/
+|   |-- components/
+|   |-- data/
+|   `-- lib/
+|-- package.json
+`-- .env.example
 ```
 
 ## Suggested Frontend Types
@@ -568,4 +608,7 @@ For the frontend developer, the best order is:
 - Schemas: [app/models.py](C:/Users/Lenovo/Desktop/CivitasX/app/models.py)
 - Simulation engine: [app/simulation.py](C:/Users/Lenovo/Desktop/CivitasX/app/simulation.py)
 - Groq client wrapper: [app/llm.py](C:/Users/Lenovo/Desktop/CivitasX/app/llm.py)
+- Frontend app shell: [frontend/src/App.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/App.jsx)
+- Frontend 3D city view: [frontend/src/components/City3D.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/City3D.jsx)
+- Frontend agent flow: [frontend/src/components/AgentFlowPanel.jsx](C:/Users/Lenovo/Desktop/CivitasX/frontend/src/components/AgentFlowPanel.jsx)
 - Tests: [tests/test_simulation.py](C:/Users/Lenovo/Desktop/CivitasX/tests/test_simulation.py)
