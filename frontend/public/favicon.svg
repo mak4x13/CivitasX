@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="ring" x1="16" y1="18" x2="48" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9" />
+      <stop offset="1" stop-color="#E0F2FE" />
+    </linearGradient>
+    <linearGradient id="bars" x1="22" y1="24" x2="42" y2="42" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC" />
+      <stop offset="1" stop-color="#BAE6FD" />
+    </linearGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="1.8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g opacity=".18" stroke="#67E8F9" stroke-width="1.4">
+    <path d="M15 18H49" />
+    <path d="M15 32H49" />
+    <path d="M15 46H49" />
+    <path d="M18 15V49" />
+    <path d="M32 15V49" />
+    <path d="M46 15V49" />
+  </g>
+
+  <g filter="url(#glow)">
+    <circle cx="32" cy="32" r="17" stroke="url(#ring)" stroke-opacity=".28" stroke-width="2" />
+    <circle cx="32" cy="32" r="11.5" stroke="url(#ring)" stroke-width="2.6" stroke-dasharray="20 8" />
+  </g>
+
+  <g fill="url(#bars)">
+    <rect x="22" y="28.5" width="6.8" height="11.5" rx="1.8" />
+    <rect x="29.2" y="23" width="7.4" height="17" rx="1.9" />
+    <rect x="37.1" y="26.5" width="5.9" height="13.5" rx="1.6" />
+  </g>
+
+  <path d="M22 41H43" stroke="#67E8F9" stroke-opacity=".6" stroke-width="1.8" stroke-linecap="round" />
+  <circle cx="45.8" cy="19.8" r="3.4" fill="#FBBF24" />
+  <circle cx="45.8" cy="19.8" r="5.8" stroke="#FBBF24" stroke-opacity=".24" />
+</svg>

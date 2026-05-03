@@ -157,10 +157,6 @@ export function buildConsequenceFeed(simulation) {
     ...simulation.conflicts,
   ];
 
-  if (simulation.agents?.advisor?.recommendation) {
-    feed.push(`Advisor action: ${simulation.agents.advisor.recommendation}`);
-  }
-
   if (simulation.comparison?.headline) {
     feed.push(simulation.comparison.headline);
   }

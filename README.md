@@ -69,11 +69,13 @@ Implemented:
 - safer alternative policy generation
 - comparison mode support
 - optional Groq SDK integration for executive summaries
+- backend Docker deployment scaffold for Hugging Face Spaces
+- frontend Vercel deployment scaffold for SPA hosting
+- backend live-context endpoint with RSS/fallback modes
 - tests for core simulation flows
 
 Not implemented yet:
 
-- deployment setup
 - advanced caching or auth
 - production monitoring
 
@@ -168,6 +170,51 @@ cd frontend
 npm run build
 ```
 
+## Deployment
+
+### Backend on Hugging Face Docker Spaces
+
+The repository now includes:
+
+- `Dockerfile`
+- `.dockerignore`
+- `requirements-prod.txt`
+
+Recommended backend environment variables:
+
+```text
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.1-8b-instant
+LIVE_CONTEXT_PROVIDER=rss
+LIVE_CONTEXT_TIMEOUT_SECONDS=3.5
+LIVE_CONTEXT_MAX_ITEMS=5
+```
+
+Local container check:
+
+```powershell
+docker build -t civitasx-backend .
+docker run -p 7860:7860 civitasx-backend
+```
+
+The container serves FastAPI on port `7860`, which is a good fit for a Docker-based Hugging Face Space.
+
+### Frontend on Vercel
+
+The frontend now includes:
+
+- `frontend/vercel.json`
+- `frontend/.env.example`
+
+Recommended Vercel project settings:
+
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Environment Variable: `VITE_API_BASE_URL=https://<your-space>.hf.space`
+
+The included `vercel.json` adds an SPA rewrite so browser refreshes and direct links continue to resolve correctly.
+
 ## Backend API
 
 | Endpoint | Purpose |
@@ -176,6 +223,7 @@ npm run build
 | `GET /health` | Health check |
 | `GET /cities` | Supported cities and summaries |
 | `GET /metadata` | Default scenario and frontend control options |
+| `GET /context/live` | Backend-fetched live or fallback operating context |
 | `POST /simulate` | Main simulation endpoint |
 | `POST /compare` | Before-vs-after scenario comparison |
 

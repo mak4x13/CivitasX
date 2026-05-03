@@ -1,13 +1,29 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  const { timeoutMs = 15000, headers, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timerId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(headers || {}),
+      },
+      signal: controller.signal,
+      ...fetchOptions,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. Check the backend and try again.');
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timerId);
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -22,6 +38,13 @@ export function loadBootstrap() {
     metadata,
     cities,
   }));
+}
+
+export function loadLiveContext(city) {
+  const params = new URLSearchParams({ city });
+  return request(`/context/live?${params.toString()}`, {
+    timeoutMs: 7000,
+  });
 }
 
 export function simulateScenario(scenario, { useLLM = true } = {}) {

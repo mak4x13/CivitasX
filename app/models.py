@@ -223,6 +223,28 @@ class CityCatalogResponse(BaseModel):
     cities: List[CityCatalogItem]
 
 
+class LiveContextItem(BaseModel):
+    title: str
+    source: str
+    url: Optional[str] = None
+    published_at: Optional[str] = None
+
+
+class LiveContextResponse(BaseModel):
+    city: CityName
+    mode: str
+    trigger_type: str
+    severity: str
+    confidence: str
+    affected_systems: List[str] = Field(default_factory=list)
+    summary: str
+    signal: str
+    query: str
+    updated_at: str
+    items: List[LiveContextItem] = Field(default_factory=list)
+    suggested_scenario: Dict[str, object] = Field(default_factory=dict)
+
+
 class MetadataResponse(BaseModel):
     default_scenario: ScenarioRequest
     options: Dict[str, List[str]]

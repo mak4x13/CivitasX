@@ -66,6 +66,18 @@ body::before {
   animation: flowDash 2.6s linear infinite;
 }
 
+.agent-node-active {
+  animation: agentPulse 1.65s ease-in-out infinite;
+}
+
+.sim-ring {
+  animation: simPulse 1.8s ease-out infinite;
+}
+
+.sim-ring-delay {
+  animation-delay: 0.35s;
+}
+
 @keyframes alertIn {
   0% {
     opacity: 0;
@@ -81,5 +93,32 @@ body::before {
 @keyframes flowDash {
   to {
     stroke-dashoffset: -18;
+  }
+}
+
+@keyframes agentPulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 18px 45px rgba(2, 6, 23, 0.45);
+  }
+
+  50% {
+    opacity: 0.96;
+    box-shadow:
+      0 22px 54px rgba(34, 211, 238, 0.24),
+      0 0 0 1px rgba(103, 232, 249, 0.16);
+  }
+}
+
+@keyframes simPulse {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.82);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
   }
 }

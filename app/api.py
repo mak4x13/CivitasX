@@ -3,10 +3,13 @@ from fastapi import APIRouter, Query
 from app.models import (
     ComparisonRequest,
     ComparisonResponse,
+    CityName,
+    LiveContextResponse,
     MetadataResponse,
     ScenarioRequest,
     SimulationResponse,
 )
+from app.live_context import service as live_context_service
 from app.simulation import engine
 
 
@@ -16,7 +19,7 @@ router = APIRouter()
 @router.get("/", tags=["system"])
 def root() -> dict:
     return {
-        "name": "PolicyPulse AI Backend",
+        "name": "CivitasX Backend",
         "message": "City-aware multi-agent policy simulation API",
         "docs": "/docs",
     }
@@ -35,6 +38,11 @@ def cities():
 @router.get("/metadata", response_model=MetadataResponse, tags=["metadata"])
 def metadata() -> MetadataResponse:
     return engine.get_metadata()
+
+
+@router.get("/context/live", response_model=LiveContextResponse, tags=["metadata"])
+def live_context(city: CityName) -> LiveContextResponse:
+    return live_context_service.get_context(city)
 
 
 @router.post("/simulate", response_model=SimulationResponse, tags=["simulation"])

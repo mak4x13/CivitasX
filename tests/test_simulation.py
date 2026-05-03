@@ -72,6 +72,22 @@ def test_api_simulate_returns_visual_outputs():
     assert data["generated_by"] == "rule_based"
 
 
+def test_live_context_endpoint_returns_backend_context():
+    response = client.get("/context/live", params={"city": "Islamabad"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["city"] == "Islamabad"
+    assert data["mode"] in {"fallback", "rss"}
+    assert data["trigger_type"]
+    assert data["severity"]
+    assert data["confidence"]
+    assert isinstance(data["affected_systems"], list)
+    assert isinstance(data["suggested_scenario"], dict)
+    assert data["summary"]
+    assert isinstance(data["items"], list)
+
+
 def test_compare_endpoint_prefers_lower_risk_option():
     request = {
         "current": {
@@ -100,4 +116,3 @@ def test_compare_endpoint_prefers_lower_risk_option():
     data = response.json()
     assert data["deltas"]["city_stability"] > 0
     assert data["deltas"]["protest_probability"] > 0
-

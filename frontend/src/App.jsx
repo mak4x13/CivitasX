@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import AlertSystem from './components/AlertSystem';
 import AgentFlowPanel from './components/AgentFlowPanel';
 import AgentReadoutPanel from './components/AgentReadoutPanel';
 import AnalysisPanel from './components/AnalysisPanel';
-import City3D from './components/City3D';
 import ConflictBanner from './components/ConflictBanner';
 import ControlPanel from './components/ControlPanel';
 import GovernancePanel from './components/GovernancePanel';
 import PersonaPanel from './components/PersonaPanel';
 import ZonePopup from './components/ZonePopup';
-import { loadBootstrap, simulateScenario } from './lib/api';
+import { loadBootstrap, loadLiveContext, simulateScenario } from './lib/api';
 import {
   buildActionPlan,
   buildAlertItems,
@@ -23,6 +22,8 @@ import {
   FALLBACK_SCENARIO,
   titleize,
 } from './lib/transformers';
+
+const City3D = lazy(() => import('./components/City3D'));
 
 function MetricCard({ label, value, accent, hint }) {
   return (
@@ -43,6 +44,35 @@ function ScenarioChip({ label, value }) {
   );
 }
 
+function describeRoadClosureState(level) {
+  return level === 'none' ? 'None' : titleize(level);
+}
+
+function describeConnectivityState(level) {
+  if (level === 'off') {
+    return 'Open';
+  }
+
+  if (level === 'partial') {
+    return 'Partial restriction';
+  }
+
+  return 'Shutdown';
+}
+
+function buildTriggerNarrative(liveContext, selectedCity, simulation) {
+  if (liveContext?.mode === 'rss') {
+    return liveContext.summary;
+  }
+
+  if (liveContext?.trigger_type) {
+    const affectedSystems = (liveContext.affected_systems || []).slice(0, 3).join(', ');
+    return `${liveContext.trigger_type} is the current starting frame${affectedSystems ? `. Most exposed systems: ${affectedSystems}.` : '.'}`;
+  }
+
+  return simulation?.comparison?.headline || simulation?.city_profile?.summary || selectedCity?.summary || 'Test a restriction policy and watch the city systems react.';
+}
+
 function Header({
   controls,
   metrics,
@@ -51,6 +81,7 @@ function Header({
   requestState,
   selectedCity,
   simulation,
+  liveContext,
 }) {
   const cards = [
     {
@@ -86,27 +117,23 @@ function Header({
         ? 'bg-rose-300'
         : 'bg-emerald-300';
 
-  const narrative =
-    simulation?.comparison?.headline ||
-    simulation?.city_profile?.summary ||
-    selectedCity?.summary ||
-    'Test a restriction policy and watch the city systems react.';
+  const narrative = buildTriggerNarrative(liveContext, selectedCity, simulation);
 
   return (
     <header className="rounded-[34px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,15,28,0.92),rgba(2,6,23,0.82))] p-5 shadow-[0_26px_100px_rgba(2,6,23,0.45)] backdrop-blur-xl lg:p-6">
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.9fr]">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-cyan-100">
-            CivitasX
+            Live Trigger to Decision Lab
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-            Policy Impact Theater
           </div>
 
-          <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl xl:max-w-3xl">
-            Simulate policy impact with a judge-ready briefing.
+          <p className="mt-5 font-display text-5xl font-semibold tracking-tight text-white sm:text-6xl">CivitasX</p>
+          <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-cyan-50 sm:text-3xl xl:max-w-3xl">
+            Stress-test public decisions before they hit the city
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-            Build a scenario, submit it, then use the simulation and briefing panels to explain outcomes clearly.
+            CivitasX turns real-world pressure into policy scenarios, reveals downstream impact across mobility, markets, services, and sentiment, and helps decision-makers choose the safer response before policy goes public.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2.5">
@@ -117,15 +144,15 @@ function Header({
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.9fr]">
             <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">Scenario snapshot</p>
-              <p className="mt-2 text-lg font-semibold text-white">What the city is reacting to</p>
+              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-slate-400">Trigger snapshot</p>
+              <p className="mt-2 text-lg font-semibold text-white">What is happening before the decision</p>
               <p className="mt-3 text-sm leading-7 text-slate-300">{narrative}</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <span className="rounded-[20px] border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-300">
-                  Roads: <span className="font-semibold text-white">{titleize(controls.road_closure_level)}</span>
+                  Road closures: <span className="font-semibold text-white">{describeRoadClosureState(controls.road_closure_level)}</span>
                 </span>
                 <span className="rounded-[20px] border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-300">
-                  Internet: <span className="font-semibold text-white">{titleize(controls.internet_shutdown)}</span>
+                  Connectivity: <span className="font-semibold text-white">{describeConnectivityState(controls.internet_shutdown)}</span>
                 </span>
               </div>
             </div>
@@ -231,7 +258,7 @@ function FloatingMetrics({ metrics, trends }) {
           const numeric = Number(row.delta || 0);
           const positive = numeric > 0;
           const negative = numeric < 0;
-          const arrow = numeric === 0 ? '→' : positive ? '↑' : '↓';
+          const arrow = numeric === 0 ? '=' : positive ? '+' : '-';
           const tone = row.invert ? (positive ? 'text-rose-300' : negative ? 'text-emerald-300' : 'text-slate-300') : positive ? 'text-emerald-300' : negative ? 'text-amber-300' : 'text-slate-300';
 
           return (
@@ -249,16 +276,258 @@ function FloatingMetrics({ metrics, trends }) {
   );
 }
 
-function AIRecommendationPanel({ recommendation }) {
+function StickyMetricRail({ metrics, trends, requestState, lastResponseAt }) {
+  const rows = [
+    {
+      label: 'City Stability',
+      value: `${metrics.stabilityScore}/100`,
+      delta: trends?.city_stability,
+    },
+    {
+      label: 'Mobility',
+      value: `${metrics.mobility}/100`,
+      delta: trends?.mobility,
+    },
+    {
+      label: 'Economic Stress',
+      value: `${metrics.economicImpact}/100`,
+      delta: trends?.economic_impact,
+      invert: true,
+    },
+    {
+      label: 'Protest Risk',
+      value: `${metrics.protestRisk}/100`,
+      delta: trends?.protest_probability,
+      invert: true,
+    },
+  ];
+  const statusTone =
+    requestState === 'sending'
+      ? 'border-amber-400/20 bg-amber-400/10 text-amber-50'
+      : requestState === 'error'
+        ? 'border-rose-400/20 bg-rose-400/10 text-rose-50'
+        : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-50';
+  const statusLabel =
+    requestState === 'sending'
+      ? 'Updating simulation'
+      : requestState === 'error'
+        ? 'Backend unavailable'
+        : lastResponseAt
+          ? `Updated ${new Date(lastResponseAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          : 'Awaiting first run';
+
   return (
-    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
-      <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">AI Recommendation</p>
-      <p className="mt-3 text-sm leading-6 text-slate-300">{recommendation || 'Run a simulation to get a suggested rollout strategy and risk summary.'}</p>
-      <div className="mt-5 rounded-[22px] border border-cyan-400/15 bg-cyan-400/10 p-4 text-sm text-cyan-100">
-        <p className="font-semibold">Suggested action</p>
-        <p className="mt-2 text-slate-200">{recommendation || 'Await simulation results.'}</p>
+    <section className="sticky top-4 z-30 rounded-[24px] border border-white/10 bg-slate-950/88 p-3 shadow-[0_20px_80px_rgba(2,6,23,0.4)] backdrop-blur-2xl">
+      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Live scoreline</p>
+        <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${statusTone}`}>
+          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+          {statusLabel}
+        </div>
+      </div>
+      <div className="grid gap-2 md:grid-cols-4">
+        {rows.map((row) => {
+          const numeric = Number(row.delta || 0);
+          const positive = numeric > 0;
+          const negative = numeric < 0;
+          const arrow = numeric === 0 ? '=' : positive ? '+' : '-';
+          const tone = row.invert ? (positive ? 'text-rose-300' : negative ? 'text-emerald-300' : 'text-slate-300') : positive ? 'text-emerald-300' : negative ? 'text-amber-300' : 'text-slate-300';
+
+          return (
+            <div key={row.label} className="rounded-[20px] border border-white/10 bg-white/[0.04] px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[0.58rem] uppercase tracking-[0.24em] text-slate-400">{row.label}</p>
+                <span className={`text-xs font-semibold ${tone}`}>{arrow} {row.delta !== undefined ? Math.abs(numeric) : '--'}</span>
+              </div>
+              <p className="mt-2 text-xl font-semibold text-white">{row.value}</p>
+            </div>
+          );
+        })}
       </div>
     </section>
+  );
+}
+
+function getUrgencyProfile(metrics) {
+  const urgencyValue = Math.max(100 - metrics.stabilityScore, 100 - metrics.mobility, metrics.economicImpact, metrics.protestRisk);
+
+  if (urgencyValue >= 75) {
+    return {
+      label: 'Critical response',
+      tone: 'border-rose-400/20 bg-rose-500/10 text-rose-50',
+      note: 'The city model expects cascading disruption unless the rollout is softened quickly.',
+    };
+  }
+
+  if (urgencyValue >= 60) {
+    return {
+      label: 'High alert',
+      tone: 'border-orange-400/20 bg-orange-500/10 text-orange-50',
+      note: 'Pressure is concentrated enough that one weak system can trigger secondary effects.',
+    };
+  }
+
+  if (urgencyValue >= 40) {
+    return {
+      label: 'Active watch',
+      tone: 'border-amber-400/20 bg-amber-500/10 text-amber-50',
+      note: 'The scenario is manageable, but a few indicators need active monitoring.',
+    };
+  }
+
+  return {
+    label: 'Controlled',
+    tone: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-50',
+    note: 'The current scenario is relatively stable and suited to explanation rather than crisis response.',
+  };
+}
+
+function getPrimaryPressure(metrics) {
+  const candidates = [
+    { label: 'Mobility shock', value: 100 - metrics.mobility, detail: 'Movement friction is the first downstream trigger.' },
+    { label: 'Economic strain', value: metrics.economicImpact, detail: 'Income loss and market access are taking the main hit.' },
+    { label: 'Public tension', value: metrics.protestRisk, detail: 'Sentiment and protest risk are shaping the urgency level.' },
+    { label: 'Digital fragility', value: metrics.digitalRisk, detail: 'Connectivity loss is removing the city fallback path.' },
+  ];
+
+  return candidates.sort((a, b) => b.value - a.value)[0];
+}
+
+function LiveContextPanel({ liveContext, metrics, simulation, consequences, requestState }) {
+  const urgency = getUrgencyProfile(metrics);
+  const modeLabel = liveContext?.mode === 'rss' ? 'Live feed connected' : 'Using city profile';
+  const primaryPressure = getPrimaryPressure(metrics);
+  const triggerSummary =
+    liveContext?.mode === 'rss'
+      ? liveContext?.summary
+      : liveContext?.trigger_type
+        ? `${liveContext.trigger_type} is the current baseline trigger for this city. Use a live feed or refresh later if you want external headlines to replace the profile-based frame.`
+        : 'Backend context will appear here once the feed responds.';
+
+  return (
+    <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Current Trigger</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">What is happening, what is under consideration, and what the model sees</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-300">
+            The trigger explains why a decision is being considered. The structured controls above define the candidate response, and the simulation below shows its likely ripple before the decision is finalized.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-50">
+            <span className="h-2 w-2 rounded-full bg-cyan-300 opacity-80" />
+            {modeLabel}
+          </div>
+          <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${urgency.tone}`}>
+            <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+            {requestState === 'sending' ? 'Recomputing' : urgency.label}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[0.62rem] uppercase tracking-[0.22em] text-slate-400">Trigger summary</p>
+            {liveContext?.updated_at ? (
+              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[0.62rem] uppercase tracking-[0.16em] text-slate-300">
+                Updated {new Date(liveContext.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-3 text-base leading-7 text-slate-100">{triggerSummary}</p>
+          <p className="mt-3 text-sm leading-6 text-cyan-100">{liveContext?.signal || 'No backend signal yet.'}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-cyan-300/20 bg-cyan-400/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-50">
+              {liveContext?.trigger_type || 'Pending trigger'}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-300">
+              Severity: {titleize(liveContext?.severity || 'unknown')}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-300">
+              Confidence: {titleize(liveContext?.confidence || 'unknown')}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-[22px] border border-cyan-400/14 bg-cyan-400/8 p-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-cyan-200/80">Predicted ripple check</p>
+          <p className="mt-3 text-sm leading-7 text-slate-100">
+            {consequences?.[0] || simulation?.main_risks?.[0] || 'Run the scenario to compare the live context against the model output.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_0.9fr_0.9fr]">
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-slate-400">Supporting signals</p>
+          <div className="mt-3 space-y-2">
+            {(liveContext?.items || []).slice(0, 3).map((item) => (
+              <div key={`${item.source}-${item.title}`} className="rounded-[18px] border border-white/10 bg-black/20 px-3 py-3">
+                <p className="text-sm font-semibold text-white">{item.title}</p>
+                <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
+                  <span>{item.source}</span>
+                  {item.published_at ? <span>{new Date(item.published_at).toLocaleString()}</span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-slate-400">Primary pressure</p>
+          <p className="mt-2 text-lg font-semibold text-white">{primaryPressure.label}</p>
+          <p className="mt-1 text-sm font-semibold text-cyan-100">{primaryPressure.value}/100</p>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{primaryPressure.detail}</p>
+        </div>
+
+        <div className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-slate-400">Affected systems</p>
+          <p className="mt-2 text-sm leading-7 text-slate-300">
+            {(liveContext?.affected_systems || []).join(', ') || 'No backend query yet.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SimulationRunningOverlay({ controls }) {
+  const stages = [
+    'Locking the scenario inputs',
+    'Recomputing transport, economy, and access pressure',
+    'Refreshing sentiment, advice, and headline scores',
+  ];
+
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/72 backdrop-blur-md">
+      <div className="w-full max-w-[560px] rounded-[28px] border border-cyan-400/14 bg-[linear-gradient(180deg,rgba(8,15,28,0.96),rgba(2,6,23,0.92))] p-6 text-center shadow-[0_26px_100px_rgba(2,6,23,0.55)]">
+        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Simulation running</p>
+        <div className="mt-6 flex items-center justify-center">
+          <div className="relative h-28 w-28">
+            <span className="sim-ring absolute inset-0 rounded-full border border-cyan-300/35" />
+            <span className="sim-ring sim-ring-delay absolute inset-3 rounded-full border border-sky-300/30" />
+            <span className="absolute inset-[34px] rounded-full bg-cyan-300 shadow-[0_0_34px_rgba(34,211,238,0.45)]" />
+          </div>
+        </div>
+        <p className="mt-6 text-xl font-semibold text-white">
+          Recomputing {titleize(controls.scenario_type)} for {controls.city}
+        </p>
+        <p className="mt-2 text-sm leading-7 text-slate-300">
+          The model is updating transport, services, public sentiment, and the final advisory posture.
+        </p>
+
+        <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
+          {stages.map((stage) => (
+            <div key={stage} className="rounded-[20px] border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
+              {stage}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -382,9 +651,11 @@ export default function App() {
   const [playbackStages, setPlaybackStages] = useState([]);
   const [activePlaybackIndex, setActivePlaybackIndex] = useState(0);
   const [playbackRunning, setPlaybackRunning] = useState(false);
-  const [workspaceTab, setWorkspaceTab] = useState('city');
+  const [liveContext, setLiveContext] = useState(null);
+  const [liveContextState, setLiveContextState] = useState('idle');
   const [insightTab, setInsightTab] = useState('brief');
   const alertTimers = useRef(new Map());
+  const workspaceRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -410,6 +681,41 @@ export default function App() {
 
     return () => window.clearInterval(timerId);
   }, [playbackRunning, playbackStages]);
+
+  useEffect(() => {
+    if (!controls.city) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function refresh() {
+      setLiveContextState('loading');
+
+      try {
+        const result = await loadLiveContext(controls.city);
+        if (cancelled) {
+          return;
+        }
+
+        setLiveContext(result);
+        setLiveContextState('ready');
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setLiveContext(null);
+        setLiveContextState('error');
+      }
+    }
+
+    void refresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [controls.city]);
 
   useEffect(() => {
     let cancelled = false;
@@ -478,8 +784,55 @@ export default function App() {
     });
   }
 
+  function focusWorkspace() {
+    window.setTimeout(() => {
+      workspaceRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 80);
+  }
+
+  async function refreshLiveContextForCity(nextCity = controls.city) {
+    setLiveContextState('loading');
+
+    try {
+      const result = await loadLiveContext(nextCity);
+      setLiveContext(result);
+      setLiveContextState('ready');
+    } catch (error) {
+      setLiveContext(null);
+      setLiveContextState('error');
+      pushAlerts([
+        {
+          message: error.message || 'Context feed request failed.',
+          tone: 'warning',
+        },
+      ]);
+    }
+  }
+
+  function applyTriggerSuggestion() {
+    if (!liveContext?.suggested_scenario) {
+      return;
+    }
+
+    setControls((current) => ({
+      ...current,
+      ...liveContext.suggested_scenario,
+    }));
+
+    pushAlerts([
+      {
+        message: 'Trigger framing applied to the candidate decision controls.',
+        tone: 'info',
+      },
+    ]);
+  }
+
   async function applyScenario(nextControls, isBootstrap = false) {
     setRequestState('sending');
+    setActiveZone(null);
 
     try {
       const result = await simulateScenario(nextControls, { useLLM: true });
@@ -492,7 +845,6 @@ export default function App() {
       setLastResponseAt(Date.now());
       setRequestState('ready');
       setActiveZone(null);
-      setWorkspaceTab('city');
       setInsightTab('brief');
       if (!isBootstrap) {
         pushAlerts(buildAlertItems(result));
@@ -509,6 +861,7 @@ export default function App() {
   }
 
   function handleApply() {
+    focusWorkspace();
     void applyScenario(controls);
   }
 
@@ -520,26 +873,28 @@ export default function App() {
     setControls(defaultScenario);
     setActiveZone(null);
     setAlerts([]);
-    setWorkspaceTab('city');
     setInsightTab('brief');
+    focusWorkspace();
+    void refreshLiveContextForCity(defaultScenario.city);
     void applyScenario(defaultScenario);
   }
 
   function handleDemo() {
     setControls(DEMO_SCENARIO);
-    setWorkspaceTab('city');
     setInsightTab('brief');
+    focusWorkspace();
+    void refreshLiveContextForCity(DEMO_SCENARIO.city);
     void applyScenario(DEMO_SCENARIO);
   }
 
-  const visualMetrics = buildVisualMetrics(simulation);
-  const zoneStates = buildZoneStates(simulation);
-  const personas = buildPersonaImpacts(simulation, zoneStates);
-  const actionPlan = buildActionPlan(simulation);
-  const governanceFrame = buildGovernanceFrame(simulation);
-  const selectedZone = zoneStates.find((zone) => zone.id === activeZone) || null;
-  const activePlaybackStage = playbackStages[activePlaybackIndex] || null;
-  const pulseZoneIds = activePlaybackStage?.zoneIds || [];
+  const visualMetrics = useMemo(() => buildVisualMetrics(simulation), [simulation]);
+  const zoneStates = useMemo(() => buildZoneStates(simulation), [simulation]);
+  const personas = useMemo(() => buildPersonaImpacts(simulation, zoneStates), [simulation, zoneStates]);
+  const actionPlan = useMemo(() => buildActionPlan(simulation), [simulation]);
+  const governanceFrame = useMemo(() => buildGovernanceFrame(simulation), [simulation]);
+  const selectedZone = useMemo(() => zoneStates.find((zone) => zone.id === activeZone) || null, [zoneStates, activeZone]);
+  const activePlaybackStage = useMemo(() => playbackStages[activePlaybackIndex] || null, [playbackStages, activePlaybackIndex]);
+  const pulseZoneIds = useMemo(() => activePlaybackStage?.zoneIds || [], [activePlaybackStage]);
   const selectedCity = useMemo(
     () => cities.find((entry) => entry.name === controls.city),
     [cities, controls.city],
@@ -567,68 +922,87 @@ export default function App() {
     <div className="relative min-h-screen px-4 py-4 lg:px-6 lg:py-6">
       <AlertSystem alerts={alerts} onDismiss={(id) => setAlerts((current) => current.filter((alert) => alert.id !== id))} />
 
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] w-full max-w-[1680px] gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-5 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-1">
-          <section className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
-            <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">CivicLens AI</p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">Live city policy simulation</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">Build a policy, submit it, and watch the city react in real time.</p>
-          </section>
+      <div className="mx-auto w-full max-w-[1680px] space-y-5">
+        <Header
+          controls={controls}
+          metrics={visualMetrics}
+          requestLabel={requestLabel}
+          requestDetail={requestDetail}
+          requestState={requestState}
+          selectedCity={selectedCity}
+          simulation={simulation}
+          liveContext={liveContext}
+        />
 
-          <FloatingMetrics metrics={visualMetrics} trends={simulation?.comparison?.score_deltas} />
-
-          <CollapsibleSection
-            title="Scenario settings"
-            subtitle="Set the policy inputs"
-            summary={`${controls.city} · ${titleize(controls.scenario_type)} · ${controls.duration_days} day${controls.duration_days > 1 ? 's' : ''}`}
-            defaultOpen
-          >
-            <ControlPanel
-              controls={controls}
-              options={metadata?.options}
-              citySummary={selectedCity?.summary}
-              onChange={updateControl}
-              onApply={handleApply}
-              onReset={handleReset}
-              onDemo={handleDemo}
-              requestState={requestState}
-              generatedBy={simulation?.generated_by}
-            />
-          </CollapsibleSection>
-
-          <AIRecommendationPanel recommendation={simulation?.agents?.advisor?.recommendation} />
-        </div>
+        <ControlPanel
+          controls={controls}
+          options={metadata?.options}
+          citySummary={selectedCity?.summary}
+          onChange={updateControl}
+          liveContext={liveContext}
+          liveContextState={liveContextState}
+          onRefreshLiveContext={() => void refreshLiveContextForCity()}
+          onApplyTriggerSuggestion={applyTriggerSuggestion}
+          onApply={handleApply}
+          onReset={handleReset}
+          onDemo={handleDemo}
+          requestState={requestState}
+        />
 
         <div className="space-y-5">
-          {simulation ? (
-            <ConflictBanner conflicts={simulation.conflicts} recommendation={simulation.agents?.advisor?.recommendation} />
-          ) : null}
-
-          <CollapsibleSection
+          <div ref={workspaceRef}>
+            <CollapsibleSection
             title="Simulation workspace"
-            subtitle="View the city or ripple flow"
-            summary={workspaceTab === 'ripple' ? 'Showing the agent chain reaction' : 'Exploring the city and district map'}
+            subtitle="Live ripple flow and city response"
+            summary={requestState === 'sending' ? 'Simulation is running.' : 'Run a scenario to inspect the ripple and city response.'}
             defaultOpen
           >
-            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">City view</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Interactive 3D simulation</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Your policy choice animates the city and powers the ripple effect.</p>
+                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">Simulation workspace</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Live ripple and city response</h2>
               </div>
-
-              <SegmentedTabs
-                items={[
-                  { key: 'city', label: '3D City' },
-                  { key: 'map', label: 'District Map' },
-                  { key: 'ripple', label: 'Ripple Flow' },
-                ]}
-                activeKey={workspaceTab}
-                onChange={setWorkspaceTab}
-              />
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300">
+                {requestState === 'sending' ? 'Simulation running' : 'Ready'}
+              </div>
             </div>
 
-            {workspaceTab === 'ripple' ? (
+            <StickyMetricRail
+              metrics={visualMetrics}
+              trends={simulation?.comparison?.score_deltas}
+              requestState={requestState}
+              lastResponseAt={lastResponseAt}
+            />
+
+            <div className="mt-5 grid gap-5 xl:grid-cols-2">
+              <section className="flex h-full flex-col rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl xl:h-[680px]">
+                <div className="mb-4 flex flex-col gap-2">
+                  <p className="text-[0.68rem] uppercase tracking-[0.28em] text-cyan-300/75">3D city</p>
+                </div>
+
+                <div className="relative min-h-[380px] flex-1 rounded-[26px] border border-white/10 bg-slate-950/70 shadow-[0_20px_80px_rgba(2,6,23,0.45)] xl:min-h-0 xl:overflow-hidden">
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_35%),linear-gradient(180deg,#020617_0%,#01040c_100%)]">
+                        <div className="rounded-[24px] border border-cyan-400/14 bg-cyan-400/8 px-5 py-4 text-sm text-cyan-50">
+                          Loading 3D city view...
+                        </div>
+                      </div>
+                    }
+                  >
+                    <City3D
+                      zoneStates={zoneStates}
+                      metrics={visualMetrics}
+                      activeZoneId={activeZone}
+                      pulseZoneIds={pulseZoneIds}
+                      onSelectZone={(zone) => setActiveZone(zone.id)}
+                    />
+                  </Suspense>
+                  {requestState === 'sending' ? <SimulationRunningOverlay controls={controls} /> : null}
+                  <ZonePopup zone={selectedZone} onClose={() => setActiveZone(null)} />
+                </div>
+              </section>
+
               <AgentFlowPanel
                 network={simulation?.agent_network}
                 headline={simulation?.comparison?.headline}
@@ -641,41 +1015,24 @@ export default function App() {
                   setPlaybackRunning(true);
                 }}
               />
-            ) : (
-              <>
-                <div className="relative h-[580px] min-h-[580px] lg:h-[680px] lg:min-h-[680px] xl:h-[calc(100vh-250px)] xl:min-h-[640px] xl:overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/70 shadow-[0_20px_80px_rgba(2,6,23,0.45)]">
-                  <City3D
-                    zoneStates={zoneStates}
-                    metrics={visualMetrics}
-                    activeZoneId={activeZone}
-                    pulseZoneIds={pulseZoneIds}
-                    playbackStage={activePlaybackStage}
-                    onSelectZone={(zone) => setActiveZone(zone.id)}
-                    showOverlay={workspaceTab === 'map'}
-                    overlayClosable={workspaceTab === 'map'}
-                    onCloseOverlay={() => setWorkspaceTab('city')}
-                  />
-                  <ZonePopup zone={selectedZone} onClose={() => setActiveZone(null)} />
-                </div>
+            </div>
+            </CollapsibleSection>
+          </div>
 
-                <PlaybackStrip
-                  playbackStages={playbackStages}
-                  activeStageIndex={activePlaybackIndex}
-                  playbackRunning={playbackRunning}
-                  onRestartPlayback={(index = 0) => {
-                    setActivePlaybackIndex(index);
-                    setPlaybackRunning(true);
-                  }}
-                  onTogglePlayback={() => setPlaybackRunning((current) => !current)}
-                />
-              </>
-            )}
-          </CollapsibleSection>
+          <LiveContextPanel
+            liveContext={liveContext}
+            metrics={visualMetrics}
+            simulation={simulation}
+            consequences={consequences}
+            requestState={requestState}
+          />
+
+          {simulation ? <ConflictBanner conflicts={simulation.conflicts} /> : null}
 
           <CollapsibleSection
             title="Decision briefing"
             subtitle="Summary, systems, and stakeholders"
-            summary="Expand to see the judge-ready briefing and detailed insights."
+            summary="Expand to see the briefing and detailed insights."
             defaultOpen={false}
           >
             <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-4 shadow-[0_20px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">

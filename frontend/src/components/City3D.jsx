@@ -87,14 +87,32 @@ function CameraControls() {
   useEffect(() => {
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
+    controls.enableZoom = false;
     controls.minPolarAngle = 0.58;
     controls.maxPolarAngle = 1.12;
     controls.minDistance = 22;
-    controls.maxDistance = 48;
+    controls.maxDistance = 56;
     controls.target.set(0, 0, 0);
     controls.update();
 
-    return () => controls.dispose();
+    function syncZoomState(event) {
+      controls.enableZoom = event.shiftKey;
+    }
+
+    function resetZoomState() {
+      controls.enableZoom = false;
+    }
+
+    window.addEventListener('keydown', syncZoomState);
+    window.addEventListener('keyup', syncZoomState);
+    window.addEventListener('blur', resetZoomState);
+
+    return () => {
+      window.removeEventListener('keydown', syncZoomState);
+      window.removeEventListener('keyup', syncZoomState);
+      window.removeEventListener('blur', resetZoomState);
+      controls.dispose();
+    };
   }, [controls]);
 
   useFrame(() => {
@@ -153,8 +171,8 @@ function PulseHalo({ size, color, active }) {
 
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 768;
-  canvas.height = 220;
+  canvas.width = 620;
+  canvas.height = 176;
 
   const context = canvas.getContext('2d');
   if (!context) {
@@ -164,9 +182,9 @@ function createLabelTexture(text) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = 'rgba(2, 6, 23, 0.82)';
   context.strokeStyle = 'rgba(255, 255, 255, 0.42)';
-  context.lineWidth = 8;
+  context.lineWidth = 6;
 
-  const radius = 42;
+  const radius = 32;
   const width = canvas.width;
   const height = canvas.height;
   context.beginPath();
@@ -183,15 +201,15 @@ function createLabelTexture(text) {
   context.fill();
   context.stroke();
 
-  context.font = '700 52px Space Grotesk, sans-serif';
+  context.font = '700 40px Space Grotesk, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#f8fafc';
-  context.fillText(text, width / 2, height / 2 - 10);
+  context.fillText(text, width / 2, height / 2 - 8);
 
-  context.font = '600 22px Manrope, sans-serif';
+  context.font = '600 18px Manrope, sans-serif';
   context.fillStyle = '#d4d4d8';
-  context.fillText('DEPARTMENT', width / 2, height / 2 + 48);
+  context.fillText('DEPARTMENT', width / 2, height / 2 + 36);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -214,7 +232,7 @@ function DepartmentLabel({ text, position }) {
   }
 
   return (
-    <sprite position={position} scale={[7.2, 2.1, 1]} renderOrder={20}>
+    <sprite position={position} scale={[5.8, 1.7, 1]} renderOrder={20}>
       <spriteMaterial map={texture} transparent depthWrite={false} depthTest={false} />
     </sprite>
   );
@@ -375,7 +393,7 @@ function ZoneBlock({ zone, isHovered, isSelected, isPlaybackActive, onSelect, on
         );
       })}
 
-      <DepartmentLabel text={zone.departmentName ?? zone.name} position={[0, 5.1, 0]} />
+      <DepartmentLabel text={zone.departmentName ?? zone.name} position={[0, 4.7, 0]} />
 
       <MarkerCluster zone={zone} type="traffic" count={zone.trafficMarkers} color="#fbbf24" offsetY={0.34} />
       <MarkerCluster zone={zone} type="protest" count={zone.protestMarkers} color="#fb7185" offsetY={0.56} />
@@ -490,105 +508,12 @@ function CityVehicles({ trafficLevel }) {
   );
 }
 
-function CityOverlayMap({ zoneStates, metrics, activeZoneId, hoveredZoneId, onClose, closable = true }) {
-  const width = 1100;
-  const height = 720;
-  const scale = 18;
-
-  const toX = (x) => width / 2 + x * scale;
-  const toY = (z) => height / 2 - z * scale;
-
-  return (
-    <div className="pointer-events-auto absolute inset-4 z-20 overflow-hidden rounded-[28px] border border-white/10 bg-black/82 shadow-[0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-400">District Map</p>
-          <p className="text-xs text-slate-200">Zone-level stress view</p>
-        </div>
-        {closable ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-200 transition hover:bg-white/10"
-          >
-            Close
-          </button>
-        ) : null}
-      </div>
-
-      <div className="h-[calc(100%-56px)] w-full p-2 sm:p-4">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full">
-          <defs>
-            <linearGradient id="roadGlow" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#737373" stopOpacity="0.12" />
-            </linearGradient>
-          </defs>
-
-          <rect x="0" y="0" width={width} height={height} fill="rgba(2,2,2,0.75)" rx="22" />
-
-          <line x1="50" y1={height / 2} x2={width - 50} y2={height / 2} stroke="url(#roadGlow)" strokeWidth="28" strokeLinecap="round" />
-          <line x1={width / 2} y1="50" x2={width / 2} y2={height - 50} stroke="url(#roadGlow)" strokeWidth="28" strokeLinecap="round" />
-
-          {zoneStates.map((zone) => {
-            const x = toX(zone.position[0]);
-            const y = toY(zone.position[2]);
-            const zoneWidth = zone.size[0] * scale;
-            const zoneHeight = zone.size[1] * scale;
-            const highlighted = zone.id === activeZoneId || zone.id === hoveredZoneId;
-            const stroke = highlighted ? '#ffffff' : '#cbd5e1';
-            const fillOpacity = highlighted ? 0.32 : 0.18;
-            const tone = riskTone(zone.riskBand);
-
-            return (
-              <g key={zone.id}>
-                <rect
-                  x={x - zoneWidth / 2}
-                  y={y - zoneHeight / 2}
-                  width={zoneWidth}
-                  height={zoneHeight}
-                  rx="18"
-                  fill={tone}
-                  fillOpacity={fillOpacity}
-                  stroke={stroke}
-                  strokeWidth={highlighted ? 4 : 2}
-                />
-                <text x={x} y={y - zoneHeight / 2 + 24} textAnchor="middle" fill="#f8fafc" fontSize="13" fontWeight="700" letterSpacing="0.14em">
-                  {zone.name.toUpperCase()}
-                </text>
-                <text x={x} y={y + zoneHeight / 2 - 18} textAnchor="middle" fill="#d4d4d8" fontSize="11">
-                  {zone.stabilityScore}/100
-                </text>
-              </g>
-            );
-          })}
-
-          <text x="28" y="38" fill="#f8fafc" fontSize="18" fontWeight="700" letterSpacing="0.3em">
-            DISTRICT MAP
-          </text>
-          <text x="28" y="62" fill="#d4d4d8" fontSize="11" fontWeight="500" letterSpacing="0.2em">
-            backend-driven zone stress map
-          </text>
-
-          <text x={width - 28} y="38" textAnchor="end" fill="#f8fafc" fontSize="16" fontWeight="700" letterSpacing="0.22em">
-            STABILITY {metrics.stabilityScore}/100
-          </text>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
 export default function City3D({
   zoneStates,
   metrics,
   activeZoneId,
   pulseZoneIds = [],
-  playbackStage,
   onSelectZone,
-  showOverlay = true,
-  overlayClosable = true,
-  onCloseOverlay,
 }) {
   const [hoveredZoneId, setHoveredZoneId] = useState(null);
   const lights = [
@@ -602,8 +527,8 @@ export default function City3D({
   ];
 
   return (
-    <div className="relative h-full min-h-[620px] overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,#030712_0%,#020617_58%,#010101_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
-      <Canvas className="h-full w-full" shadows camera={{ position: [28, 26, 24], fov: 42 }}>
+    <div className="relative h-full overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_24%),linear-gradient(180deg,#030712_0%,#020617_58%,#010101_100%)] shadow-[0_20px_80px_rgba(2,6,23,0.55)]">
+      <Canvas className="h-full w-full" shadows camera={{ position: [31, 28, 28], fov: 46 }}>
         <color attach="background" args={['#050505']} />
         <ambientLight intensity={1.45} color="#ffffff" />
         <directionalLight position={[18, 28, 14]} intensity={4.3} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} color="#ffffff" />
@@ -640,30 +565,11 @@ export default function City3D({
         <CameraControls />
       </Canvas>
 
-      {showOverlay ? (
-        <CityOverlayMap
-          zoneStates={zoneStates}
-          metrics={metrics}
-          activeZoneId={activeZoneId}
-          hoveredZoneId={hoveredZoneId}
-          onClose={onCloseOverlay}
-          closable={overlayClosable}
-        />
-      ) : null}
-
       <div className="pointer-events-none absolute left-4 top-4 rounded-[22px] border border-white/10 bg-slate-950/72 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
-        <p className="text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">3D District View</p>
-        <p className="mt-2 text-sm font-semibold text-white">Orbit, zoom, and click a district to inspect it.</p>
-        <p className="mt-2 text-xs leading-6 text-slate-400">Traffic, protest, and police markers respond to the backend payload.</p>
+        <p className="text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">3D City View</p>
+        <p className="mt-2 text-sm font-semibold text-white">Drag to orbit and click a district to inspect it.</p>
+        <p className="mt-2 text-xs leading-6 text-slate-400">Scroll moves the page. Hold Shift while scrolling to zoom the camera.</p>
       </div>
-
-      {playbackStage ? (
-        <div className="pointer-events-none absolute right-4 top-4 max-w-[340px] rounded-[22px] border border-cyan-400/14 bg-slate-950/78 px-4 py-3 text-xs text-slate-300 shadow-lg backdrop-blur-xl">
-          <p className="uppercase tracking-[0.22em] text-cyan-300/75">Active Ripple Stage</p>
-          <p className="mt-2 text-sm font-semibold text-white">{playbackStage.title}</p>
-          <p className="mt-2 leading-6 text-slate-300">{playbackStage.detail}</p>
-        </div>
-      ) : null}
 
       <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-2">
         <span className="rounded-full border border-white/10 bg-slate-950/72 px-3 py-1.5 text-xs text-slate-200">

@@ -5,12 +5,12 @@ from app.api import router
 
 
 app = FastAPI(
-    title="PolicyPulse AI Backend",
+    title="CivitasX Backend",
     version="0.1.0",
     description=(
-        "Backend simulation API for the PolicyPulse AI hackathon project. "
+        "Backend simulation API for the CivitasX policy simulation project. "
         "It provides city-aware multi-agent scoring, conflict detection, "
-        "comparison mode, and optional Groq-powered summaries."
+        "comparison mode, optional Groq-powered summaries, and live-context ingestion."
     ),
 )
 
@@ -23,4 +23,3 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
