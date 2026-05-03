@@ -1,4 +1,27 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+function getDefaultApiBaseUrl() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://127.0.0.1:8000';
+  }
+
+  return '';
+}
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '');
+
+function getRequestUrl(path) {
+  if (!API_BASE_URL) {
+    throw new Error(
+      'Backend URL is not configured. Set VITE_API_BASE_URL to your Hugging Face Space URL before deploying the frontend.',
+    );
+  }
+
+  return `${API_BASE_URL}${path}`;
+}
 
 async function request(path, options = {}) {
   const { timeoutMs = 15000, headers, ...fetchOptions } = options;
@@ -7,7 +30,7 @@ async function request(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(getRequestUrl(path), {
       headers: {
         'Content-Type': 'application/json',
         ...(headers || {}),

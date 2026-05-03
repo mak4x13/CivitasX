@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router
+from app.settings import get_settings
 
 
 app = FastAPI(
@@ -14,10 +15,12 @@ app = FastAPI(
     ),
 )
 
+settings = get_settings()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=list(settings.cors_origins) or ["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -179,13 +179,16 @@ The repository now includes:
 - `Dockerfile`
 - `.dockerignore`
 - `requirements-prod.txt`
+- `HF_SPACE_README_TEMPLATE.md`
+- `DEPLOYMENT.md`
 
 Recommended backend environment variables:
 
 ```text
+BACKEND_CORS_ORIGINS=*
 GROQ_API_KEY=...
 GROQ_MODEL=llama-3.1-8b-instant
-LIVE_CONTEXT_PROVIDER=rss
+LIVE_CONTEXT_PROVIDER=fallback
 LIVE_CONTEXT_TIMEOUT_SECONDS=3.5
 LIVE_CONTEXT_MAX_ITEMS=5
 ```
@@ -198,6 +201,8 @@ docker run -p 7860:7860 civitasx-backend
 ```
 
 The container serves FastAPI on port `7860`, which is a good fit for a Docker-based Hugging Face Space.
+
+For the exact hosted deployment sequence, use [DEPLOYMENT.md](C:/Users/Lenovo/Desktop/CivitasX/DEPLOYMENT.md).
 
 ### Frontend on Vercel
 
